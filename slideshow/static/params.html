@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control Panel</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="settings">
+  <div class="container">
+    <h1>Control Panel</h1>
+
+    <input type="hidden" id="index" value="0">
+
+    <!-- Immediate effect fields -->
+    <div class="row">
+      <div class="field">
+        <label for="displayTimeMs">Display time (ms)</label>
+        <input type="number" id="displayTimeMs" class="input" value="5000" min="100" step="100">
+      </div>
+      <div class="field">
+        <label for="logLevel">Logging detail</label>
+        <select id="logLevel" class="input">
+          <option value="INFO">info</option>
+          <option value="DEBUG">debug</option>
+          <option value="WARN">warn</option>
+          <option value="ERROR">error</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <p class="divider-text">The following will take effect only after Saving and server re-boot</p>
+
+    <!-- Which params file this server was started with, and the mode it
+         declares. Both are read-only: you choose them with --params=<file>
+         at startup, not here. -->
+    <div class="row">
+      <div class="field">
+        <label for="paramsFile">Params file</label>
+        <input type="text" id="paramsFile" class="input" value="" readonly>
+      </div>
+      <div class="field">
+        <label for="source">Source</label>
+        <input type="text" id="source" class="input" value="" readonly>
+      </div>
+    </div>
+
+    <!-- DB fields -->
+    <div id="db-params">
+      <div class="row">
+        <div class="field">
+          <label for="dataDir">Data folder</label>
+          <input type="text" id="dataDir" class="input" value="" placeholder="e.g. ../photos">
+        </div>
+        <div class="field">
+          <label for="dbName">Database file</label>
+          <input type="text" id="dbName" class="input" value="" placeholder="e.g. photos3.db">
+        </div>
+      </div>
+      <div class="field">
+        <label for="trashDir">Trash folder</label>
+        <input type="text" id="trashDir" class="input" value="" placeholder="e.g. ../photos/trash">
+      </div>
+      <div class="field">
+        <label for="whereClause">where clause</label>
+        <input type="text" id="whereClause" class="input" value="" placeholder="e.g. camera LIKE '%Canon%'">
+      </div>
+      <div class="field">
+        <label for="orderBy">order by</label>
+        <input type="text" id="orderBy" class="input" value="" placeholder="e.g. dt_taken DESC">
+      </div>
+    </div>
+
+    <!-- Folder fields (none currently; imageFolderPath is shared below) -->
+    <div id="folder-params" style="display:none;"></div>
+
+    <!-- Image folder path (used in both modes) -->
+    <div class="field">
+      <label for="imageFolderPath">Image folder path</label>
+      <input type="text" id="imageFolderPath" class="input" value="">
+    </div>
+
+    <!-- Common fields -->
+    <div class="row">
+      <div class="field">
+        <label for="maxDepth">max depth</label>
+        <input type="number" id="maxDepth" class="input" value="3" min="1">
+      </div>
+      <div class="field">
+        <label for="maxFiles">max files</label>
+        <input type="number" id="maxFiles" class="input" value="200" min="1">
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="button-row">
+      <button type="button" id="save-btn" class="btn btn-secondary">Save</button>
+      <button type="button" id="resume-btn" class="btn btn-primary">Resume</button>
+    </div>
+  </div>
+
+  <script src="/static/params.js"></script>
+</body>
+</html>

@@ -1,0 +1,480 @@
+/* ===========================================
+   CSS Variables
+   =========================================== */
+:root {
+  --accent: #4a9eff;
+  --accent-hover: #3a8eef;
+  --bg-page: #000;
+  --bg-panel: #1a1a1a;
+  --bg-input: #222;
+  --bg-overlay: rgba(0, 0, 0, 0.8);
+  --border: #333;
+  --border-light: #444;
+  --border-hover: #555;
+  --text: #fff;
+  --text-muted: #aaa;
+  --text-dim: #888;
+  --text-faint: #666;
+  --success: #6bff6b;
+  --success-bg: #1a4a1a;
+  --error: #ff6b6b;
+  --error-bg: #4a1a1a;
+  --radius: 5px;
+  --radius-lg: 10px;
+}
+
+/* ===========================================
+   Base Reset & Typography
+   =========================================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-page);
+  font-family: sans-serif;
+  color: var(--text);
+}
+
+body.slideshow {
+  overflow: hidden;
+}
+
+body.settings {
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+}
+
+/* The hidden attribute is the one source of truth for visibility --
+   it must beat component rules like .menu-btn-group .btn */
+[hidden] {
+  display: none !important;
+}
+
+/* ===========================================
+   Reusable Components
+   =========================================== */
+
+/* Buttons */
+.btn {
+  padding: 12px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  color: var(--text);
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.btn-secondary {
+  background-color: var(--border);
+  color: var(--text);
+}
+
+.btn-secondary:hover {
+  background-color: var(--border-light);
+}
+
+.btn-small {
+  padding: 8px 16px;
+  font-size: 14px;
+  background-color: var(--border);
+  color: var(--text);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.btn-small:hover,
+.btn-small.selected {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Inputs */
+.input {
+  width: 100%;
+  padding: 10px;
+  font-size: 15px;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Display-only value shown in an .input box (e.g. the params file). */
+.input[readonly] {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* Overlays */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-overlay);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.overlay.visible {
+  display: flex;
+}
+
+/* Panels */
+.panel {
+  background-color: var(--bg-panel);
+  padding: 30px;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  max-width: 450px;
+}
+
+.panel h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.panel p {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #ccc;
+}
+
+/* Indicators (toast-style notifications) */
+.indicator {
+  position: fixed;
+  top: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  display: none;
+  z-index: 100;
+}
+
+.indicator.visible {
+  display: block;
+}
+
+/* Keyboard key styling */
+kbd {
+  background-color: var(--border);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+/* Two-column key -> description list (menu help) */
+.keylist {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 12px;
+  align-items: center;
+  text-align: left;
+  font-size: 14px;
+  color: #ccc;
+}
+
+.keylist dt {
+  justify-self: end;
+}
+
+/* Status messages */
+.status {
+  margin-top: 20px;
+  padding: 10px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  display: none;
+}
+
+.status.error {
+  display: block;
+  background-color: var(--error-bg);
+  color: var(--error);
+}
+
+.status.success {
+  display: block;
+  background-color: var(--success-bg);
+  color: var(--success);
+}
+
+/* ===========================================
+   Slideshow Page
+   =========================================== */
+.stage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.slide-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.preload {
+  display: none;
+}
+
+.centered-msg {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+}
+
+/* .indicator modifiers: position/background only */
+.indicator-right {
+  right: 20px;
+  padding: 10px 20px;
+}
+
+.indicator-toast {
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(74, 158, 255, 0.85);
+  z-index: 250;
+}
+
+.counter {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 8px 15px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  z-index: 100;
+}
+
+.info-overlay {
+  top: 20px;
+  left: 20px;
+  max-width: 70%;
+  padding: 10px 15px;
+  font-size: 18px;
+  line-height: 1.6;
+  text-align: left;
+  white-space: pre-line;
+  word-break: break-all;
+}
+
+/* Notes form */
+.notes-form {
+  min-width: 480px;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.notes-form h2 {
+  text-align: center;
+  cursor: move;
+  user-select: none;
+}
+
+/* Transparent overlay, so the image shows through (Notes form) */
+.overlay-clear {
+  background-color: transparent;
+}
+
+.notes-form .field {
+  margin-bottom: 12px;
+}
+
+/* Menu button group */
+.menu-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.menu-btn-group .btn {
+  width: 100%;
+}
+
+/* Label / value list (Notes form header) */
+.form-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.form-info dt {
+  color: var(--text);
+  font-weight: bold;
+}
+
+.form-info dd {
+  color: var(--text-muted);
+  min-height: 1em;
+}
+
+.path-text {
+  word-break: break-all;
+  font-size: 12px;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.form-buttons button {
+  flex: 1;
+}
+
+.action-status {
+  font-size: 13px;
+  margin-top: 10px;
+  min-height: 20px;
+  text-align: center;
+}
+
+.action-status.success {
+  color: var(--success);
+}
+
+.action-status.error {
+  color: var(--error);
+}
+
+/* Full-screen error / "photo missing" message inside #loading */
+.error-box {
+  max-width: 500px;
+  padding: 20px;
+  text-align: center;
+}
+
+.error-title {
+  margin-bottom: 15px;
+  color: var(--error);
+  font-size: 18px;
+}
+
+.error-detail {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.error-meta {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+textarea.input {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* Menu keyboard focus highlight */
+.menu-btn-group .btn:focus,
+.menu-link a:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Menu overlay */
+.menu-link {
+  margin-top: 15px;
+}
+
+.menu-link a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.menu-link a:hover {
+  text-decoration: underline;
+}
+
+/* ===========================================
+   Settings/Params Page
+   =========================================== */
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.container h1 {
+  font-size: 28px;
+  margin-bottom: 30px;
+  color: var(--accent);
+}
+
+.row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 15px;
+}
+
+.field {
+  flex: 1;
+}
+
+.field label {
+  display: block;
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+}
+
+.divider-text {
+  margin: 25px 0 20px 0;
+  padding: 15px;
+  background-color: var(--bg-panel);
+  border-left: 3px solid var(--accent);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.button-row {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+}
+
+.button-row button {
+  flex: 1;
+}

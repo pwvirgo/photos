@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slideshow</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="slideshow">
+  <div id="slideshow-container" class="stage">
+    <div id="loading" class="centered-msg" role="status" aria-live="polite">Loading images...</div>
+    <img id="current-image" class="slide-img" alt="Slideshow image">
+    <img id="preload-image" class="preload" alt="" aria-hidden="true">
+  </div>
+
+  <div id="pause-indicator" class="indicator indicator-right">PAUSED</div>
+
+  <div id="action-indicator" class="indicator indicator-toast"></div>
+
+  <div id="image-counter" class="counter"></div>
+
+  <div id="info-overlay" class="indicator info-overlay"></div>
+
+  <!-- Main menu: shown when user presses Esc -->
+  <div id="menu-overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="menu-heading">
+    <div id="menu-content" class="panel">
+      <h2 id="menu-heading">Slideshow Menu</h2>
+      <dl class="keylist">
+        <dt><kbd>Space</kbd></dt><dd>Pause / Resume</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Toggle this menu</dd>
+        <dt><kbd>&larr;</kbd></dt><dd>Previous image</dd>
+        <dt><kbd>&rarr;</kbd></dt><dd>Next image</dd>
+        <dt><kbd>I</kbd></dt><dd>Toggle image info</dd>
+        <dt><kbd>N</kbd></dt><dd>Open Notes</dd>
+      </dl>
+      <div class="menu-btn-group">
+        <button type="button" id="notes-btn" class="btn btn-secondary" hidden>Notes</button>
+        <button type="button" id="resume-btn" class="btn btn-primary">Resume</button>
+      </div>
+      <p class="menu-link"><a id="params-link" href="/params">Settings</a></p>
+    </div>
+  </div>
+
+  <!-- Notes form -->
+  <div id="notes-overlay" class="overlay overlay-clear" role="dialog" aria-modal="true" aria-labelledby="notes-heading">
+    <div class="panel notes-form">
+      <h2 id="notes-heading">Notes</h2>
+      <dl class="form-info">
+        <dt>Filename</dt><dd id="notes-filename"></dd>
+        <dt>IMG_ID</dt><dd id="notes-img-id"></dd>
+        <dt>Camera</dt><dd id="notes-camera"></dd>
+        <dt>Path</dt><dd id="notes-path" class="path-text"></dd>
+        <dt>Date taken</dt><dd id="notes-date-taken"></dd>
+        <dt>Date created</dt><dd id="notes-date-created"></dd>
+        <dt>KB</dt><dd id="notes-kb"></dd>
+        <dt>Photo size</dt><dd id="notes-img-size"></dd>
+      </dl>
+      <div class="row">
+        <div class="field">
+          <label for="notes-category">Category</label>
+          <input type="text" id="notes-category" class="input" maxlength="16">
+        </div>
+        <div class="field">
+          <label for="notes-rank">Rank (1&ndash;5)</label>
+          <input type="number" id="notes-rank" class="input" min="1" max="5">
+        </div>
+      </div>
+      <div class="field">
+        <label for="notes-comment">Comment</label>
+        <textarea id="notes-comment" class="input" rows="4" maxlength="1024" placeholder="Enter comment..."></textarea>
+      </div>
+      <div id="notes-msg" class="action-status"></div>
+      <div class="form-buttons">
+        <button type="button" id="notes-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="notes-submit-btn" class="btn btn-primary">Save Note</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
