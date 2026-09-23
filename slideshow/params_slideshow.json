@@ -1,7 +1,7 @@
 {
   "source": "db",
   "imageFolderPath": "/Users/mac24/a/projects/photos_old/images3",
-  "dataDir": "/Users/mac24/a/projects/photos/dbase",
+  "dataDir": "/Users/mac24/a/projects/photos_old",
   "dbName": "photos3.db",
   "tableName": "fotos -- not yet implemented",
   "whereClause": "exists (select 1 from fotos b where b.md5 = fotos.md5 and b.img_id <> fotos.img_id)",
