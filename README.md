@@ -9,6 +9,24 @@ that one database plus the image files it points at.
 This is a fresh start of what used to be two separate repos (`photos` and
 `slideshow`). See "Status" below for what actually exists today.
 
+## Quick start
+
+Run each module from its own directory — see that module's README for the
+full picture.
+
+```bash
+# View and annotate the catalog
+cd slideshow && deno run --allow-read --allow-net --allow-write slideshow.ts --params=params_slideshow.json
+
+# Sync missing-file flags, then stage and execute deletes from notes
+cd curate && deno run --allow-read --allow-write findMissing.ts --params=params_curate.json
+cd curate && deno run --allow-read --allow-write executeDeletions.ts --params=params_curate.json
+```
+
+Both `curate` commands default to a dry run — add `--execute` once you've
+checked the output. `collect` has no single entry point; see
+`collect/README.md` for its scan → hash → load pipeline.
+
 ## The actors
 
 Four modules, each with a stated write scope:
@@ -63,6 +81,4 @@ folder outside every project and delete `photos_old` entirely; see
 - `photo_port.md` — moving a working copy to another machine
 
 Still open, per `design/nextSession_260921.md`: the project's final name
-(currently just `photos`) and directory/file case convention. (Whether the
-schema SQL belongs to `dbase` or `collect` has been settled by action:
-`create_tables.sql` lives in `dbase/`.)
+(currently just `photos`) and directory/file case convention.
