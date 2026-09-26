@@ -20,7 +20,7 @@
 // bad scan can annotate, but it can never stage a deletion.
 //
 // Only touches `notes`. Never reads or writes `fotos`, `actions`, or any image
-// file. Only status='ok' rows are scanned — a soft-deleted row's file is gone
+// file. Only status='ok' rows are scanned — a status='deleted' row's file is gone
 // on purpose, because the deletion step moved it to trash.
 //
 // Guard: if the shared image root (params.imageFolderPath) is not there, the

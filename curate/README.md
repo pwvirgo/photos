@@ -1,7 +1,8 @@
 # curate/
 
-Curating the photo library: deciding which images to get rid of, recording
-that decision, and carrying it out. Nothing here happens automatically and
+Curating the photo library: deciding which images to delete, and deleting.
+
+Nothing here happens automatically and
 nothing is a single step — a deletion passes through three tables and two
 hand-run programs before a file moves, and every stage leaves a record. Full
 detail: `design/reconcile.md`. This is the module-local summary.
@@ -30,8 +31,9 @@ Both scripts default to a dry run; nothing changes until `--execute`.
 | `findMissing.ts` | Bulk missing-file scan. Writes only `notes`. |
 | `notesToActions.sql` | Staging. `notes` → pending `actions`. |
 | `executeDeletions.ts` | Execution. Moves files, writes `actions` and `fotos.status`. |
+| `validate.ts` | Read-only audit: done deletes vs. `fotos.status`, deleted rows vs. files on disk, live rows vs. files on disk. Writes nothing, not even a log — reads straight off stdout. |
 | `params_curate.json` | This module's params (`source: "db"`), pointed at `photos_old`'s live db and images — same data `slideshow` uses, no second copy. |
-| `curate.log` | Append-only log, written by both `.ts` scripts, in this directory. |
+| `curate.log` | Append-only log, written by `findMissing.ts` and `executeDeletions.ts`, in this directory. |
 | `history/migrate.sql` | Archived migration SQL from an earlier db rebuild. Reference only. |
 
 Imports come from `../lib/` (`params.ts`, `logger.ts`) and `../dbase/db.ts`
@@ -40,8 +42,8 @@ against `fotos`/`notes`/`actions` outside those.
 
 ## Commands
 
-Run from **this directory** — both scripts write `curate.log` relative to
-the current directory.
+Run from **this directory** — `findMissing.ts` and `executeDeletions.ts`
+write `curate.log` relative to the current directory.
 
 ```bash
 PARAMS=params_curate.json
@@ -62,6 +64,9 @@ deno run --allow-read --allow-write executeDeletions.ts --params=$PARAMS --execu
 
 # 4. Stage new deletes from notes
 sqlite3 -init /dev/null -batch $DB < notesToActions.sql
+
+# 5. Audit the three invariants (read-only, no log file, no --execute)
+deno run --allow-read validate.ts --params=$PARAMS
 ```
 
 Staging (`notesToActions.sql`) refuses to run while any `delete` action is

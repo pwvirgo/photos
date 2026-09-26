@@ -35,7 +35,7 @@ CREATE TABLE actions (
     info        TEXT,
     request_dt  TEXT DEFAULT (datetime('now')),
     status_dt   TEXT,
-    status      TEXT CHECK(status IN ('done','pending','failed')) DEFAULT 'pending',
+    status      TEXT CHECK(status IN ('done','pending','failed','gone')) DEFAULT 'pending',
     img_id      INTEGER,
     FOREIGN KEY (img_id) REFERENCES fotos(img_id)
 );

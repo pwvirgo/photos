@@ -45,10 +45,10 @@ export function openDb(dbPath: string): DatabaseSync {
   const db = new DatabaseSync(dbPath);
   // node:sqlite enforces foreign keys by default (unlike the sqlite3 CLI, which
   // is off by default). notes/actions keep img_id referencing fotos rows as an
-  // audit trail that must outlive the photo. Under the current soft delete
+  // audit trail that must outlive the photo. Under the current approach
   // (fotos.status='deleted') the row stays put, so nothing is orphaned today —
   // `PRAGMA foreign_key_check` is clean. It is kept off for what comes next: a
-  // purge of soft-deleted rows would otherwise be blocked by, or cascade away,
+  // purge of status='deleted' rows would otherwise be blocked by, or cascade away,
   // that audit trail. (An older scheme moved rows to a `deleted` table, which
   // orphaned notes outright; that table is gone.)
   db.exec("PRAGMA foreign_keys = OFF;");
@@ -98,7 +98,7 @@ export function queryImages(dbPath: string, whereClause: string,
   checkSqlFragment(whereClause, "WHERE clause");
   checkSqlFragment(orderBy, "ORDER BY clause");
 
-  // `status='deleted'` rows are soft-deleted: the app treats them as if they
+  // `status='deleted'` rows are treated as if they
   // were gone from the table (this replaced an older scheme that physically
   // moved rows into a separate `deleted` table). A CTE named `fotos` shadows
   // the real table for the entire query, so the params whereClause — and

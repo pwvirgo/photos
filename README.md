@@ -39,8 +39,7 @@ Four modules, each with a stated write scope:
 | `curate` | `status`, `path`/`name` | insert/delete `missing` | insert, update | **moves/destroys** |
 
 - **`collect`** scans the image files, extracts metadata, and populates the
-  `fotos` table. Nothing else in this project ever inserts, updates, or
-  deletes a `fotos` row — with one exception below.
+  `fotos` table. This and the curate module are the only modules that ever change the contents of the fotos table. 
 - **`dbase`** isn't a policy actor — it doesn't decide what gets written. It
   holds the schema (`create_tables.sql`) and the database-access code
   (`db.ts`: open/query/insert routines) that `slideshow` and `curate` call
@@ -49,7 +48,7 @@ Four modules, each with a stated write scope:
   ever inserts into `notes`.
 - **`curate`** turns notes into staged `actions` and executes them —
   deletions move files to a trash folder and set `fotos.status = 'deleted'`
-  (a soft delete; the exception above). It is the only code that touches a
+  (the row stays, only `status` changes; the exception above). It is the only code that touches a
   file destructively.
 
 `lib/` is Deno/TS code shared by `slideshow` and `curate` only — `collect` is

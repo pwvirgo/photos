@@ -16,7 +16,7 @@ Two projects share one SQLite database.
   slideshow, and the staged changes that come out of them.
 
 The exception is the last step of a deletion, which sets `fotos.status` to
-`'deleted'`. That is a soft delete: the row stays, and `../photos` keeps
+`'deleted'`. The row stays: only `status` changes, and `../photos` keeps
 owning everything else about it.
 
 ## What it's for
@@ -42,7 +42,7 @@ never reach the filesystem without you running two more commands.
   that image's and finish the database half of the job.
 - **The record survives the image.** Foreign keys are off on purpose
   (`PRAGMA foreign_keys = OFF` in `openDb()`), so `notes` and `actions` rows
-  outlive the soft-deleted `fotos` rows they point at.
+  outlive the `fotos` rows they point at, even after `status` is set to `'deleted'`.
 - **Unmounted-volume guard.** If the shared image root is not there, a run
   aborts having changed nothing, rather than concluding the whole library
   vanished.

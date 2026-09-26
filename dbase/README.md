@@ -23,7 +23,7 @@ already is a hand-run script outside the app's code paths.
   `insertNote()` / `insertAction()` (parameterized inserts);
   `hasMissingNote()` / `deleteMissingNotes()`; `fileExists()`. `openDb()`
   turns foreign keys off on purpose, so `notes` / `actions` rows can outlive
-  a soft-deleted `fotos` row. Imports `logger` from `../lib/logger.ts`.
+  a `fotos` row whose `status` is `'deleted'`. Imports `logger` from `../lib/logger.ts`.
 
 `collect` is zsh/Python and can't import `db.ts` directly — until that's
 settled, it keeps writing its own SQL/Python for schema creation and

@@ -98,24 +98,26 @@ Three tables, one view, defined in `dbase/create_tables.sql`:
 - `fotos` — `img_id` (PK), `path`, `name`, `status`
   (`CHECK(status IN ('ok','deleted'))`), `bytes`, `dt_taken`, `dt_created`,
   `camera`, `lens`, `lat`, `lon`, `img_size`, `duration`, `md5`. Deletion is
-  a soft delete (`status='deleted'`) — the row stays.
+  the row stays, only `status` changes to `'deleted'`.
 - `notes` — `note_id` (PK), `category` (free text), `rank`
   (`CHECK(rank IN (1..5))`), `comment`, `img_id` (FK), `note_dt`. Written by
   the slideshow Notes form and by missing-file detection
   (`category='missing'`, `rank=5`).
 - `actions` — `action_id` (PK), `action` (`CHECK` one of
   `mv/delete/rotate/resize/crop/edit/other`), `info`, `request_dt`,
-  `status_dt`, `status` (`CHECK` one of `done/pending/failed`), `img_id`
+  `status_dt`, `status` (`CHECK` one of `done/pending/failed/gone`), `img_id`
   (FK). `curate/notesToActions.sql` sets `info` to the note's comment
-  verbatim; `executeDeletions.ts` appends `' | file gone'` when the file
-  was already missing.
+  verbatim; `executeDeletions.ts` sets `status='gone'` and appends
+  `' | file gone'` when the file was already missing — `'failed'` is
+  reserved for a genuine execution failure (move or DB error), not this
+  case.
 - `v_notes` — view: `notes` LEFT JOIN `fotos`, exposing note fields plus
   `status`, `path`, `name`, `full_path`, `md5`. Read helper, nothing writes
   through it.
 
 `node:sqlite` enforces foreign keys by default; `openDb()` (`dbase/db.ts`)
 turns them **off** on purpose, so `notes`/`actions` rows can outlive a
-soft-deleted `fotos` row as an audit trail.
+a `fotos` row whose `status` is `'deleted'` as an audit trail.
 
 **`img_id` is the fragile part.** `notes` and `actions` identify images by
 `img_id` alone. If the catalog is ever rebuilt and ids change, every row in

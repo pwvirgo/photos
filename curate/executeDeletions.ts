@@ -4,7 +4,7 @@
 // actions (keeps the lowest action_id per image). Then for each image: move
 // the file into <trashDir>/<stem>_<img_id><ext>, and in ONE transaction set
 // fotos.status='deleted' and the action to 'done'. If the file is already
-// gone: fotos.status='deleted', action 'failed' with 'file gone' in info.
+// gone: fotos.status='deleted', action 'gone' with 'file gone' in info.
 // Emptying the trash is a separate, manual step.
 //
 // Re-runnable after a crash: each image's state is re-derived from where the
@@ -158,7 +158,7 @@ async function main(): Promise<void> {
   const setFotoDeleted = db.prepare("UPDATE fotos SET status = 'deleted' WHERE img_id = ?");
   const setDone = db.prepare("UPDATE actions SET status = 'done', status_dt = datetime('now') WHERE action_id = ?");
   const setFileGone = db.prepare(
-    `UPDATE actions SET status = 'failed', status_dt = datetime('now'),
+    `UPDATE actions SET status = 'gone', status_dt = datetime('now'),
        info = COALESCE(info || ' | ', '') || 'file gone'
      WHERE action_id = ?`
   );
@@ -239,7 +239,7 @@ async function main(): Promise<void> {
     detail(`${execute ? "FILE GONE " : "WOULD MARK"} ${tag} — file gone: ${src}`);
     if (execute) {
       commit(row, setFileGone);
-      logger.warn(`executeDeletions: ${tag} file gone, fotos marked deleted, action failed: ${src}`);
+      logger.warn(`executeDeletions: ${tag} file gone, fotos marked deleted, action gone: ${src}`);
     }
   }
 
@@ -254,7 +254,7 @@ async function main(): Promise<void> {
   say(`\n${all.length} image(s) with a pending delete; ${rows.length} processed.`);
   say(`  moved to trash   ${counts.moved}\t(file ${label}moved, fotos deleted, action done)`);
   say(`  resumed          ${counts.resumed}\t(already in trash, db ${label}finished)`);
-  say(`  file gone        ${counts.fileGone}\t(fotos ${label}deleted, action failed)`);
+  say(`  file gone        ${counts.fileGone}\t(fotos ${label}deleted, action gone)`);
   say(`  failed           ${counts.failed}\t(nothing changed)`);
   say(`  skipped          ${counts.skipped}\t(file in both places)`);
   if (outOfSync.length > 0) {
