@@ -5,7 +5,6 @@
 (function() {
   var displayTimeMsInput = document.getElementById('displayTimeMs');
   var logLevelSelect = document.getElementById('logLevel');
-  var sourceInput = document.getElementById('source');
   var paramsFileInput = document.getElementById('paramsFile');
   var dataDirInput = document.getElementById('dataDir');
   var dbNameInput = document.getElementById('dbName');
@@ -13,29 +12,15 @@
   var whereClauseInput = document.getElementById('whereClause');
   var orderByInput = document.getElementById('orderBy');
   var imageFolderPathInput = document.getElementById('imageFolderPath');
-  var maxDepthInput = document.getElementById('maxDepth');
   var maxFilesInput = document.getElementById('maxFiles');
   var indexInput = document.getElementById('index');
   var statusEl = document.getElementById('status');
   var saveBtn = document.getElementById('save-btn');
   var resumeBtn = document.getElementById('resume-btn');
-  var dbParamsDiv = document.getElementById('db-params');
-  var folderParamsDiv = document.getElementById('folder-params');
 
   // Preserve image index from incoming URL
   var urlParams = new URLSearchParams(window.location.search);
   indexInput.value = urlParams.get('index') || 0;
-
-  // Show/hide source-specific sections
-  function updateSourceUI(source) {
-    if (source === 'db') {
-      dbParamsDiv.style.display = 'block';
-      folderParamsDiv.style.display = 'none';
-    } else {
-      dbParamsDiv.style.display = 'none';
-      folderParamsDiv.style.display = 'block';
-    }
-  }
 
   // Load current param values
   async function loadParams() {
@@ -53,17 +38,13 @@
       }
       logLevelSelect.value = params.logLevel;
       paramsFileInput.value = params.paramsFile || '(unknown)';
-      sourceInput.value = params.source || 'folder';
       dataDirInput.value = params.dataDir || '';
       dbNameInput.value = params.dbName || '';
       trashDirInput.value = params.trashDir || '';
       whereClauseInput.value = params.whereClause || '';
       orderByInput.value = params.orderBy || '';
       imageFolderPathInput.value = params.imageFolderPath || '';
-      maxDepthInput.value = params.maxDepth || 3;
       maxFilesInput.value = params.maxFiles || 200;
-
-      updateSourceUI(params.source || 'folder');
     } catch (error) {
       console.error('Failed to load params:', error);
     }
@@ -103,14 +84,12 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // source is not sent: it belongs to the params file, not the form.
           dataDir: dataDirInput.value,
           dbName: dbNameInput.value,
           trashDir: trashDirInput.value,
           whereClause: whereClauseInput.value,
           orderBy: orderByInput.value,
           imageFolderPath: imageFolderPathInput.value,
-          maxDepth: parseInt(maxDepthInput.value) || 3,
           maxFiles: parseInt(maxFilesInput.value) || 200,
         }),
       });

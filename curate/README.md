@@ -1,11 +1,18 @@
 # curate/
 
-Curating the photo library: deciding which images to delete, and deleting.
+Curating the photo library: making changes to the collectiopn of image files and the databse that documents them.
 
-Nothing here happens automatically and
-nothing is a single step — a deletion passes through three tables and two
-hand-run programs before a file moves, and every stage leaves a record. Full
-detail: `design/reconcile.md`. This is the module-local summary.
+At this time the only changes deletions. In the furure there will be more actions.
+
+The events are:
+-  decide what to change and record that in the fotos.notes table.
+
+-  Check the db and images for completness and accuracy
+-  Populate the actions table from the notes table
+-  make the changes to the images and the db
+
+
+Nothing here happens automatically and nothing is a single step — a deletion passes through three tables and several CLI programs.
 
 `curate` is the only code in this project that touches a file destructively.
 It owns `actions`, and shares write access to `notes` (with `slideshow`) and
@@ -32,7 +39,7 @@ Both scripts default to a dry run; nothing changes until `--execute`.
 | `notesToActions.sql` | Staging. `notes` → pending `actions`. |
 | `executeDeletions.ts` | Execution. Moves files, writes `actions` and `fotos.status`. |
 | `validate.ts` | Read-only audit: done deletes vs. `fotos.status`, deleted rows vs. files on disk, live rows vs. files on disk. Writes nothing, not even a log — reads straight off stdout. |
-| `params_curate.json` | This module's params (`source: "db"`), pointed at `photos_old`'s live db and images — same data `slideshow` uses, no second copy. |
+| `params_curate.json` | This module's params, pointed at `photos_old`'s live db and images — same data `slideshow` uses, no second copy. |
 | `curate.log` | Append-only log, written by `findMissing.ts` and `executeDeletions.ts`, in this directory. |
 | `history/migrate.sql` | Archived migration SQL from an earlier db rebuild. Reference only. |
 
@@ -92,5 +99,5 @@ UPDATE actions SET status = 'failed', status_dt = datetime('now'),
 
 `notes` and `actions` identify images by `img_id` and nothing else. If the
 catalog is ever rebuilt and ids change, every row in both tables silently
-points at the wrong image. A rebuild is not routine — see `design/reconcile.md`
-and `history/migrate.sql` for the worked example from the last one.
+points at the wrong image. A rebuild is not routine — see
+`history/migrate.sql` for the worked example from the last one.

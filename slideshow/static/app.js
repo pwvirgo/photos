@@ -1,7 +1,7 @@
 // app.js — Slideshow viewer
 // Responsibilities: fetch image list, display images, handle slideshow
 // controls (pause, resume, next, prev, menu).
-// In DB mode: menu shows Notes button to annotate images; data saved to the notes table.
+// Menu shows a Notes button to annotate images; data saved to the notes table.
 
 (function app() {
   // DOM elements
@@ -41,7 +41,6 @@
 
   // State
   var images = [];
-  var source = 'folder';
   var currentIndex = parseInt(urlParams.get('index')) || 0;
   var displayTimeMs = parseInt(urlParams.get('displayTimeMs')) || 5000;
   var isPaused = false;
@@ -74,9 +73,7 @@
 
   // Fetch image list from server
   async function fetchImages() {
-    var folder = urlParams.get('folder');
-    var apiUrl = folder ? '/api/images?folder=' + encodeURIComponent(folder) : '/api/images';
-    var response = await fetch(apiUrl);
+    var response = await fetch('/api/images');
     return await response.json();
   }
 
@@ -94,12 +91,11 @@
     updateInfoOverlay();
   }
 
-  // DB mode: fetch the foto_id, name, path, dtCreated, and missing-on-disk
-  // status for the current image index. Returns the parsed response (or
-  // null on failure/non-db source) so callers can check `missing` before
-  // loading the image itself — see docs/reconcile.md.
+  // Fetch the foto_id, name, path, dtCreated, and missing-on-disk status for
+  // the current image index. Returns the parsed response (or null on
+  // failure) so callers can check `missing` before loading the image itself
+  // — see docs/reconcile.md.
   async function fetchImageInfo(index) {
-    if (source !== 'db') return null;
     if (index < 0 || index >= images.length) return null;
     try {
       var response = await fetch('/api/imageInfo/' + index);
@@ -128,7 +124,7 @@
 
   // Toggleable overlay showing ID/filename/path/dates/size for the current image
   function updateInfoOverlay() {
-    if (source !== 'db' || !isInfoVisible) return;
+    if (!isInfoVisible) return;
     var kb = currentBytes !== null ? Math.round(currentBytes / 1024) + ' KB' : 'Unknown';
     infoOverlay.textContent =
       'IMG_ID: ' + (currentFotoId !== null ? currentFotoId : 'Unknown') +
@@ -142,7 +138,6 @@
   }
 
   function toggleInfo() {
-    if (source !== 'db') return;
     isInfoVisible = !isInfoVisible;
     infoOverlay.classList.toggle('visible', isInfoVisible);
     updateInfoOverlay();
@@ -150,7 +145,6 @@
 
   // Notes form
   function openNotesForm() {
-    if (source !== 'db') return;
     pause();
     closeMenu();
     currentForm = 'notes';
@@ -181,7 +175,7 @@
   }
 
   async function submitNote() {
-    if (source !== 'db' || currentFotoId === null) {
+    if (currentFotoId === null) {
       notesMsg.textContent = 'No image selected';
       notesMsg.className = 'action-status error';
       return;
@@ -609,10 +603,8 @@
     try {
       var data = await fetchImages();
       images = data.images;
-      source = data.source || 'folder';
 
-      // Show Notes button in menu for DB mode
-      if (source === 'db' && notesBtn) {
+      if (notesBtn) {
         notesBtn.hidden = false;
       }
 

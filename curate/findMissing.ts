@@ -3,6 +3,10 @@
 // Keeps the 'missing' notes in sync with what is actually on disk, in both
 // directions:
 //
+// Only touches `notes`. Never reads or writes `fotos`, `actions`, or any image
+// file. Only status='ok' rows are scanned — a status='deleted' row's file is gone
+// on purpose, because the deletion step moved it to trash.
+//
 //   file gone, no 'missing' note   -> insert one  (category='missing', rank=5)
 //   file gone, already flagged     -> nothing
 //   file back, has 'missing' note  -> DELETE the note(s)
@@ -19,10 +23,6 @@
 // -> curate/executeDeletions.ts). That split is what makes auto-clearing safe: a
 // bad scan can annotate, but it can never stage a deletion.
 //
-// Only touches `notes`. Never reads or writes `fotos`, `actions`, or any image
-// file. Only status='ok' rows are scanned — a status='deleted' row's file is gone
-// on purpose, because the deletion step moved it to trash.
-//
 // Guard: if the shared image root (params.imageFolderPath) is not there, the
 // run aborts without writing anything. That is the unmounted-volume case, where
 // every file would otherwise look missing at once. It deliberately does NOT
@@ -31,14 +31,13 @@
 //
 // Dry-run by default. Db file and image root both come from the params file
 // named by --params (dataDir/dbName, imageFolderPath). That file is the only
-// way to say which data a run acts on: --params is required, and its `source`
-// must be "db".
+// way to say which data a run acts on: --params is required.
 // Prints a counts summary; --verbose adds a line per image. Everything printed
 // is also appended to curate.log (relative to the current directory, so run
 // from curate/), the same log notesToActions.sql and executeDeletions.ts write to.
 //   deno run --allow-read --allow-write findMissing.ts --params=<file> [--execute] [--limit N] [--verbose]
 
-import { loadParams, paramsPathFromArgs, noParamsFileMessage, sourceMismatch, ParamsError, dbFile } from "../lib/params.ts";
+import { loadParams, paramsPathFromArgs, noParamsFileMessage, ParamsError, dbFile } from "../lib/params.ts";
 import {
   openDb,
   fileExists,
@@ -99,15 +98,6 @@ async function main(): Promise<void> {
   }
   const params = await loadParams(paramsFile);
   logger.setLogLevel(params.logLevel);
-  // This script only makes sense against the photo database. The params file
-  // says so itself, in `source` — a folder-mode file would hand us the wrong
-  // dataDir/dbName and image root, and we would happily act on them.
-  const mismatch = sourceMismatch(params, "db", paramsFile);
-  if (mismatch) {
-    say(`ABORT — ${mismatch}`);
-    logger.error(`findMissing: ${mismatch}`);
-    Deno.exit(1);
-  }
   const dbPath = dbFile(params);
   const imageRoot = params.imageFolderPath.replace(/\/+$/, "");
 

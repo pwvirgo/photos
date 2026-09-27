@@ -6,32 +6,13 @@ Guidance for Claude Code when working in this repository.
 
 Local project for cataloging and curating a personal photo library. Images
 live outside this repo, on disk. One SQLite database (`photos3.db`) is
-shared by every part of the project. This is a fresh start of what used to
-be two separate repos (`photos` and `slideshow`) — see `design/` for the
-full planning history behind the reorganization.
+shared by every part of the project.
 
-**Current status:** all four modules below exist and have real code.
-`slideshow` and `curate` have been verified running against the live
-database. `collect` is copied over but not yet re-run from this location.
-`dbase`'s schema (`create_tables.sql`) has never actually been run to build
-a fresh database — the only database in use so far is the pre-existing one
-at `photos_old`, read in place.
-
-**Still open, deliberately unresolved — do not "fix" these without asking:**
-- The project's final name (currently just `photos`) and directory/file
-  case convention — see `design/nextSession_260921.md`.
-- Where the data ends up: there's a live proposal to move images, the
-  database, and backups of both into one external folder outside every
-  project, then delete `photos_old` entirely. Until that happens,
-  `slideshow` and `curate`'s params files point straight at
-  `photos_old/photos3.db` and `photos_old/images3` — there is no copy
-  inside this project.
-
-**Housekeeping:** `design/` is a temporary planning archive, not permanent
-documentation — once its still-relevant content (the `mv`-note comment
-format, the `orig_md5`/identity-ledger idea, `photo_port.md`'s porting
-procedure, `reconcile.md`'s open questions) is folded into the module
-READMEs and this file, `design/` can be deleted. Not urgent.
+The live database and images are at `photos_old/photos3.db` and
+`photos_old/images3` (outside this repo) — `slideshow` and `curate`'s params
+files point there directly. `dbase/create_tables.sql` has never been run to
+build a database from scratch, and `collect` hasn't been re-run from this
+repo location yet.
 
 ## The four modules
 
@@ -63,10 +44,10 @@ this way — see each module's own README for detail.
   only code that moves or destroys a file. `findMissing.ts` (bulk
   missing-file scan) and `executeDeletions.ts` (moves files to trash, soft-
   deletes the `fotos` row) both default to a dry run; nothing changes until
-  `--execute`. Full pipeline detail: `design/reconcile.md`.
+  `--execute`. Full pipeline detail: `curate/README.md`.
 
 `lib/` (`lib/README.md`) is cross-cutting Deno/TS utilities — `params.ts`,
-`logger.ts`, `scanner.ts` — shared by `slideshow` and `curate` only.
+`logger.ts` — shared by `slideshow` and `curate` only.
 
 ## Running things
 
@@ -122,15 +103,13 @@ a `fotos` row whose `status` is `'deleted'` as an audit trail.
 **`img_id` is the fragile part.** `notes` and `actions` identify images by
 `img_id` alone. If the catalog is ever rebuilt and ids change, every row in
 both tables silently points at the wrong image. A rebuild is not routine —
-see `design/reconcile.md` and `dbase/history/migrate.sql` for the worked
-example from the last one (841-row re-match on path+name).
+see `dbase/history/migrate.sql` for the worked example from the last one
+(841-row re-match on path+name).
 
 ## Configuration
 
 Each Deno/TS module's params file (loaded via `lib/params.ts`):
 
-- `source` — must be `"db"` (folder mode still exists in `lib/scanner.ts`
-  but is slated for removal — decided, not done).
 - `imageFolderPath` — the shared image root. `fotos.path` stores absolute
   paths, served/checked as-is; this is used as the unmounted-volume guard
   and, in `curate`, the root for the missing-file scan.
@@ -161,15 +140,13 @@ detect a true TIFF, check magic bytes: JPEG starts `FF D8`; TIFF starts
 `sips -s format jpeg "$f" --out "$f"` converts TIFF to JPEG in place.
 
 **A folder rename breaks `fotos.path`.** Renaming the folder holding the
-images or the db (as happened going from `photos` to `photos_old`) leaves
-every stored path stale, silently — nothing errors, `curate/findMissing.ts`
-just starts reporting every image as missing. Fix with a one-time
+images or the db leaves every stored path stale, silently — nothing errors,
+`curate/findMissing.ts` just starts reporting every image as missing. Fix with a one-time
 `UPDATE fotos SET path = replace(path, '<old>', '<new>')`, verify
 `still_old = 0`, then re-run `findMissing.ts` as a dry run to confirm 0
 changes before trusting anything else. Same fix applies to porting to
-another machine — see `design/photo_port.md`.
+another machine.
 
 ## Naming Conventions
 
-Use "params" (not "config") throughout — carried over from the old
-`slideshow` project's naming, an intentional choice there.
+Use "params" (not "config") throughout.

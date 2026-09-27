@@ -6,10 +6,6 @@ updates `fotos` rows outright (as opposed to `curate`'s narrow `status`/
 Deno/TS `lib/`/`dbase/` code the other modules use — see the root
 `README.md`'s note on that.
 
-Moved here from the old `photos` project (now `photos_old`), unchanged
-except for the move itself. Not yet run against this project's copy of
-anything — see "Status" below.
-
 ## Pipeline
 
 1. **`findAllImages.zsh <directory>`** — walks a directory with ExifTool,
@@ -46,11 +42,11 @@ next to the script itself, regardless of the caller's working directory.
 
 ## Status
 
-Copied as-is from `photos_old`; none of these have been re-run from this
-location yet, and there's no params file — nothing here reads one today
-(per the root README). `create_tables.sql` (in `dbase/`) hasn't been run to
-create a fresh schema either — the only database in use so far is
-`photos_old/photos3.db`, read in place.
+None of these scripts have been re-run from this location yet, and there's
+no params file — nothing here reads one today (per the root README).
+`create_tables.sql` (in `dbase/`) hasn't been run to create a fresh schema
+either — the only database in use so far is `photos_old/photos3.db`, read in
+place.
 
 ## Archived
 

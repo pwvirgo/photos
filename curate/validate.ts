@@ -11,13 +11,16 @@
 // Checks every row every time — never mutates anything, so there's no
 // blast radius to cap and no dry-run/--execute split. Db file and image
 // root come from the params file named by --params (dataDir/dbName,
-// imageFolderPath); its `source` must be "db".
+// imageFolderPath).
 //
-// Prints a PASS/FAIL summary per check plus a line per violation, to
 // stdout only. Exit code 0 if all three checks pass, 1 otherwise.
-//   deno run --allow-read validate.ts --params=<file>
+// ==========================================
+//   deno run --allow-read validate.ts --params=params_curate.json
+// ==========================================
 
-import { loadParams, paramsPathFromArgs, noParamsFileMessage, sourceMismatch, ParamsError, dbFile } from "../lib/params.ts";
+// ==========================================
+
+import { loadParams, paramsPathFromArgs, noParamsFileMessage, ParamsError, dbFile } from "../lib/params.ts";
 import { openDbReadOnly, fileExists } from "../dbase/db.ts";
 
 interface ActionMismatchRow {
@@ -39,14 +42,6 @@ async function main(): Promise<void> {
     Deno.exit(1);
   }
   const params = await loadParams(paramsFile);
-  // This script only makes sense against the photo database. The params file
-  // says so itself, in `source` — a folder-mode file would hand us the wrong
-  // dataDir/dbName and image root, and we would happily act on them.
-  const mismatch = sourceMismatch(params, "db", paramsFile);
-  if (mismatch) {
-    console.log(`ABORT — ${mismatch}`);
-    Deno.exit(1);
-  }
   const dbPath = dbFile(params);
   const imageRoot = params.imageFolderPath.replace(/\/+$/, "");
 

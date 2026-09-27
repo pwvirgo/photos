@@ -7,14 +7,13 @@ own SQL.
 
 That rule is about the *app code*, not about hand-run SQL by you as the
 DBA — ad-hoc `sqlite3` sessions to fix a path, prune notes, or evolve the
-schema are a separate, expected channel, same as `recon/notesToActions.sql`
+schema are a separate, expected channel, same as `curate/notesToActions.sql`
 already is a hand-run script outside the app's code paths.
 
 ## Files
 
 - **`create_tables.sql`** — schema: `fotos`, `notes`, `actions`, and the
-  `v_notes` view. Copied from the old `photos` project as a starting point;
-  not yet re-verified against a running module here.
+  `v_notes` view. Not yet run to build a database from scratch.
 
 - **`db.ts`** — SQLite interface (Deno's `node:sqlite`), moved from `lib/`.
   `openDb()` / `openDbReadOnly()`; `queryImages()` (takes a db path, not a
@@ -25,9 +24,8 @@ already is a hand-run script outside the app's code paths.
   turns foreign keys off on purpose, so `notes` / `actions` rows can outlive
   a `fotos` row whose `status` is `'deleted'`. Imports `logger` from `../lib/logger.ts`.
 
-`collect` is zsh/Python and can't import `db.ts` directly — until that's
-settled, it keeps writing its own SQL/Python for schema creation and
-population (see the open question in the root README).
+`collect` is zsh/Python and can't import `db.ts` directly, so it keeps
+writing its own SQL/Python for schema creation and population.
 
 - **`history/`** — archived, superseded SQL, reference only. `migrate.sql`
   (the photos2.db → photos3.db rebuild's 841-row re-match) and

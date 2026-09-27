@@ -1,6 +1,5 @@
 import { logger, LogLevel } from "../lib/logger.ts";
 import { loadParams, paramsPathFromArgs, noParamsFileMessage, ParamsError, Params, dbFile } from "../lib/params.ts";
-import { scanImages } from "../lib/scanner.ts";
 import { openDb, queryImages, insertAction, insertNote, hasMissingNote, fileExists, getImageInfo, DbImage } from "../dbase/db.ts";
 import { DatabaseSync } from "node:sqlite";
 
@@ -20,11 +19,10 @@ const MIME_TYPES: Record<string, string> = {
   ".svg": "image/svg+xml",
 };
 
-// Extensions an <img> tag can actually render. Deliberately wider than
-// scanner.ts's IMAGE_EXTENSIONS: bmp/svg display fine but aren't collected in
-// folder mode. Anything outside this set (.avi, .mp4, .nef, .psd, ...) is
-// reported as displayable:false so the frontend shows its path instead of
-// handing the browser a file it can't decode.
+// Extensions an <img> tag can actually render. Anything outside this set
+// (.avi, .mp4, .nef, .psd, ...) is reported as displayable:false so the
+// frontend shows its path instead of handing the browser a file it can't
+// decode.
 const DISPLAYABLE_EXTENSIONS = new Set(
   [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"],
 );
@@ -63,15 +61,6 @@ function jsonResponse(data: unknown, status = 200): Response {
   });
 }
 
-// Load images from folder source — returns relative paths (same as before)
-async function loadFolderImages(params: Params): Promise<{ imagePaths: string[], dbImages: null }> {
-  const images = await scanImages(params);
-  const imagePaths = images.map((img) =>
-    img.replace(params.imageFolderPath, "").replace(/^\//, "")
-  );
-  return { imagePaths, dbImages: null };
-}
-
 // Result type for DB loading
 interface DbLoadResult {
   dbImages: DbImage[];
@@ -80,9 +69,10 @@ interface DbLoadResult {
   totalFromDb: number;
 }
 
-// Load images from DB source — returns DbImage[] with ids and absolute paths.
-// Does not check the filesystem: missing-file detection happens lazily, per
-// image, when it's requested for display (see /api/imageInfo below).
+// Loads images from the database — returns DbImage[] with ids and absolute
+// paths. Does not check the filesystem: missing-file detection happens
+// lazily, per image, when it's requested for display (see /api/imageInfo
+// below).
 function loadDbImages(params: Params): DbLoadResult {
   try {
     // queryImages opens its own read-only connection from the path; this
@@ -120,17 +110,14 @@ async function main(): Promise<void> {
   }
   const params = await loadParams(paramsFile);
   logger.setLogLevel(params.logLevel);
-  logger.info(`Params file: ${paramsFile} (source=${params.source})`);
+  logger.info(`Params file: ${paramsFile}`);
 
-  // Load images based on source
-  let folderImagePaths: string[] = [];
   let dbImages: DbImage[] = [];
   let db: DatabaseSync | null = null;
   let startupError: string | null = null;
   let dbTotalFromDb = 0;
-  const isDbSource = params.source === "db";
 
-  if (isDbSource) {
+  {
     const result = loadDbImages(params);
     dbImages = result.dbImages;
     db = result.db;
@@ -141,10 +128,6 @@ async function main(): Promise<void> {
     } else {
       logger.info(`DB source: ${dbImages.length} images loaded`);
     }
-  } else {
-    const result = await loadFolderImages(params);
-    folderImagePaths = result.imagePaths;
-    logger.info(`Folder source: ${folderImagePaths.length} images loaded`);
   }
 
   // Logged from onListen, not before: the bind can still fail (port in use),
@@ -177,7 +160,6 @@ async function main(): Promise<void> {
     if (pathname === "/api/params" && request.method === "GET") {
       return jsonResponse({
         paramsFile,
-        source: params.source,
         imageFolderPath: params.imageFolderPath,
         dataDir: params.dataDir,
         dbName: params.dbName,
@@ -185,7 +167,6 @@ async function main(): Promise<void> {
         whereClause: params.whereClause,
         orderBy: params.orderBy,
         displayTimeMs: params.displayTimeMs,
-        maxDepth: params.maxDepth,
         maxFiles: params.maxFiles,
         logLevel: logger.getLogLevel(),
       });
@@ -199,9 +180,6 @@ async function main(): Promise<void> {
         const text = await Deno.readTextFile(paramsFile);
         const current = JSON.parse(text);
 
-        // Update fields from the form. `source` is deliberately not editable:
-        // it is what ties this file to the app that may use it, and you choose
-        // it by starting with --params=<file>, not by typing here.
         if (body.dataDir !== undefined) current.dataDir = body.dataDir;
         if (body.dbName !== undefined) current.dbName = body.dbName;
         if (body.trashDir !== undefined) current.trashDir = body.trashDir;
@@ -209,11 +187,10 @@ async function main(): Promise<void> {
         if (body.whereClause !== undefined) current.whereClause = body.whereClause;
         if (body.orderBy !== undefined) current.orderBy = body.orderBy;
         if (body.imageFolderPath !== undefined) current.imageFolderPath = body.imageFolderPath;
-        if (body.maxDepth !== undefined) current.maxDepth = body.maxDepth;
         if (body.maxFiles !== undefined) current.maxFiles = body.maxFiles;
 
         await Deno.writeTextFile(paramsFile, JSON.stringify(current, null, 2) + "\n");
-        logger.info(`Params saved to ${paramsFile} (source=${current.source})`);
+        logger.info(`Params saved to ${paramsFile}`);
         return jsonResponse({ ok: true, message: "Saved. Restart server to apply changes." });
       } catch (error) {
         logger.error(`Failed to save params: ${error}`);
@@ -240,65 +217,44 @@ async function main(): Promise<void> {
 
     // Route: GET /api/images - Return image list
     if (pathname === "/api/images") {
-      if (isDbSource) {
-        // DB mode: return list of {id, index} so frontend can reference by index
-        // Images served via /images/<index> which maps to dbImages[index]
-        const imageList = dbImages.map((_img, i) => String(i));
+      // Returns list of {id, index} so frontend can reference by index.
+      // Images served via /images/<index>, which maps to dbImages[index].
+      const imageList = dbImages.map((_img, i) => String(i));
 
-        // Build error/warning info for frontend
-        let errorInfo: { error: string; suggestion: string } | null = null;
-        if (startupError) {
-          // Database error (invalid path or SQL error)
-          if (startupError.includes("unable to open database")) {
-            errorInfo = {
-              error: `Cannot open database: ${dbFile(params)}`,
-              suggestion: `Check that dataDir and dbName in ${paramsFile} point to a valid SQLite file.`,
-            };
-          } else if (startupError.includes("syntax error")) {
-            errorInfo = {
-              error: `SQL syntax error in WHERE or ORDER BY clause`,
-              suggestion: `Fix the whereClause ("${params.whereClause}") or orderBy ("${params.orderBy}") in ${paramsFile}.`,
-            };
-          } else {
-            errorInfo = {
-              error: startupError,
-              suggestion: `Check the settings in ${paramsFile} and restart the server.`,
-            };
-          }
-        } else if (imageList.length === 0 && dbTotalFromDb === 0) {
-          // Empty query result
+      // Build error/warning info for frontend
+      let errorInfo: { error: string; suggestion: string } | null = null;
+      if (startupError) {
+        // Database error (invalid path or SQL error)
+        if (startupError.includes("unable to open database")) {
           errorInfo = {
-            error: "No images match the WHERE clause",
-            suggestion: `Adjust the whereClause in ${paramsFile}. Current: "${params.whereClause || "(none)"}"`,
+            error: `Cannot open database: ${dbFile(params)}`,
+            suggestion: `Check that dataDir and dbName in ${paramsFile} point to a valid SQLite file.`,
+          };
+        } else if (startupError.includes("syntax error")) {
+          errorInfo = {
+            error: `SQL syntax error in WHERE or ORDER BY clause`,
+            suggestion: `Fix the whereClause ("${params.whereClause}") or orderBy ("${params.orderBy}") in ${paramsFile}.`,
+          };
+        } else {
+          errorInfo = {
+            error: startupError,
+            suggestion: `Check the settings in ${paramsFile} and restart the server.`,
           };
         }
-
-        return jsonResponse({
-          source: "db",
-          images: imageList,
-          displayTimeMs: params.displayTimeMs,
-          paramsFile,
-          errorInfo,
-        });
-      } else {
-        // Folder mode: same as before
-        const folderParam = url.searchParams.get("folder");
-        let filteredImages = folderImagePaths;
-
-        if (folderParam) {
-          const normalizedFolder = folderParam.replace(/^\/+|\/+$/g, "");
-          filteredImages = folderImagePaths.filter((img) =>
-            img.startsWith(normalizedFolder + "/") || img.startsWith(normalizedFolder)
-          );
-        }
-
-        return jsonResponse({
-          source: "folder",
-          images: filteredImages,
-          displayTimeMs: params.displayTimeMs,
-          paramsFile,
-        });
+      } else if (imageList.length === 0 && dbTotalFromDb === 0) {
+        // Empty query result
+        errorInfo = {
+          error: "No images match the WHERE clause",
+          suggestion: `Adjust the whereClause in ${paramsFile}. Current: "${params.whereClause || "(none)"}"`,
+        };
       }
+
+      return jsonResponse({
+        images: imageList,
+        displayTimeMs: params.displayTimeMs,
+        paramsFile,
+        errorInfo,
+      });
     }
 
     // Route: GET /api/imageInfo/<index> - Return metadata for current image (DB mode)
@@ -310,7 +266,7 @@ async function main(): Promise<void> {
     // frontend can skip loading the file rather than triggering a broken-
     // image error. Never touches `fotos` or `actions` — reconciling a
     // 'missing' note into a real deletion is a separate, owner-driven step.
-    if (isDbSource && pathname.startsWith("/api/imageInfo/")) {
+    if (pathname.startsWith("/api/imageInfo/")) {
       const index = parseInt(pathname.replace("/api/imageInfo/", ""));
       if (isNaN(index) || index < 0 || index >= dbImages.length) {
         return jsonResponse({ error: "Invalid image index" }, 400);
@@ -347,8 +303,8 @@ async function main(): Promise<void> {
       });
     }
 
-    // Route: POST /api/actions - Record an action on an image (DB mode)
-    if (isDbSource && pathname === "/api/actions" && request.method === "POST") {
+    // Route: POST /api/actions - Record an action on an image
+    if (pathname === "/api/actions" && request.method === "POST") {
       if (!db) {
         return jsonResponse({ error: "Database not available" }, 500);
       }
@@ -368,8 +324,8 @@ async function main(): Promise<void> {
       }
     }
 
-    // Route: POST /api/notes - Record a note on an image (DB mode)
-    if (isDbSource && pathname === "/api/notes" && request.method === "POST") {
+    // Route: POST /api/notes - Record a note on an image
+    if (pathname === "/api/notes" && request.method === "POST") {
       if (!db) {
         return jsonResponse({ error: "Database not available" }, 500);
       }
@@ -389,20 +345,13 @@ async function main(): Promise<void> {
     }
 
     // Route: GET /images/* - Serve actual image files
+    // /images/<index> maps to dbImages[index].fullPath
     if (pathname.startsWith("/images/")) {
-      if (isDbSource) {
-        // DB mode: /images/<index> maps to dbImages[index].fullPath
-        const index = parseInt(pathname.replace("/images/", ""));
-        if (isNaN(index) || index < 0 || index >= dbImages.length) {
-          return new Response("Not Found", { status: 404 });
-        }
-        return serveFile(dbImages[index].fullPath);
-      } else {
-        // Folder mode: /images/<relative-path> under imageFolderPath
-        const relativePath = pathname.replace("/images/", "");
-        const fullPath = `${params.imageFolderPath}/${relativePath}`;
-        return serveFile(fullPath);
+      const index = parseInt(pathname.replace("/images/", ""));
+      if (isNaN(index) || index < 0 || index >= dbImages.length) {
+        return new Response("Not Found", { status: 404 });
       }
+      return serveFile(dbImages[index].fullPath);
     }
 
     return new Response("Not Found", { status: 404 });

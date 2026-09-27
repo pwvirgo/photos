@@ -25,14 +25,14 @@
 // Dry-run by default. Db file, trash folder and image root all come from the
 // params file named by --params (dataDir/dbName, trashDir, imageFolderPath).
 // That file is the only way to say which data a run acts on: --params is
-// required, and its `source` must be "db".
+// required.
 // Prints a counts summary only; --verbose adds a line per image. Anything
 // needing attention (failure, conflict, skip) is always printed. Everything
 // printed is also appended to curate.log (relative to the current directory,
 // so run from curate/), same log the notesToActions.sql run writes to.
 //   deno run --allow-read --allow-write executeDeletions.ts --params=<file> [--execute] [--limit N] [--verbose]
 
-import { loadParams, paramsPathFromArgs, noParamsFileMessage, sourceMismatch, ParamsError, dbFile } from "../lib/params.ts";
+import { loadParams, paramsPathFromArgs, noParamsFileMessage, ParamsError, dbFile } from "../lib/params.ts";
 import { openDb, fileExists } from "../dbase/db.ts";
 import { logger } from "../lib/logger.ts";
 
@@ -94,15 +94,6 @@ async function main(): Promise<void> {
   }
   const params = await loadParams(paramsFile);
   logger.setLogLevel(params.logLevel);
-  // This script only makes sense against the photo database. The params file
-  // says so itself, in `source` — a folder-mode file would hand us the wrong
-  // dataDir/dbName and image root, and we would happily act on them.
-  const mismatch = sourceMismatch(params, "db", paramsFile);
-  if (mismatch) {
-    say(`ABORT — ${mismatch}`);
-    logger.error(`executeDeletions: ${mismatch}`);
-    Deno.exit(1);
-  }
   const dbPath = dbFile(params);
   const trashDir = params.trashDir.replace(/\/+$/, "");
   const imageRoot = params.imageFolderPath.replace(/\/+$/, "");

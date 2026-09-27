@@ -2,12 +2,9 @@
 
 A local project for cataloging and curating a personal photo library.
 
-Images live outside this repo, on disk. One SQLite database (`photos3.db`)
+Images and database live outside this repo, on disk. One SQLite database (`photos3.db`)
 is shared by every part of the project — everything here reads or writes
 that one database plus the image files it points at.
-
-This is a fresh start of what used to be two separate repos (`photos` and
-`slideshow`). See "Status" below for what actually exists today.
 
 ## Quick start
 
@@ -56,28 +53,8 @@ zsh/Python and shares nothing with it. See `lib/README.md`.
 
 ## Status
 
-This project is a fresh start. All four modules exist now, moved over from
-`photos_old` (the old `photos` and `slideshow` projects): `slideshow` boots
-and shows the same 18-image baseline recorded in the design docs; `curate`'s
-scripts run clean dry runs against the live db; `collect` is copied over but
-not yet re-run from this location — see `collect/README.md`'s Status. Only
-`dbase` and `collect`'s schema-creation path have never actually been
-exercised together (the only database in use so far is `photos_old`'s
-existing one, read in place — `create_tables.sql` hasn't been run to build a
-fresh one).
-
-`slideshow` and `curate` both point straight at `photos_old/photos3.db` and
-`photos_old/images3` — no copy lives inside this project. There's a live
-proposal to move images, the database, and backups of both into one external
-folder outside every project and delete `photos_old` entirely; see
-`slideshow/README.md`'s open questions.
-
-`design/` holds the full planning history:
-
-- `nextSession_260921.md` — the current plan for this layout, most recent
-- `nextSession.md` — the earlier, more detailed handoff (context for the above)
-- `reconcile.md` — the notes → actions → execution pipeline, end to end
-- `photo_port.md` — moving a working copy to another machine
-
-Still open, per `design/nextSession_260921.md`: the project's final name
-(currently just `photos`) and directory/file case convention.
+All four modules exist and have code. `slideshow` and `curate` run against
+the live database at `photos_old/photos3.db` / `photos_old/images3` — no
+copy lives inside this project. `dbase/create_tables.sql` has never been run
+to build a fresh database, and `collect` hasn't been re-run from this repo
+location yet (see `collect/README.md`'s Status).

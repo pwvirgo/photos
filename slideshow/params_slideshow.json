@@ -1,5 +1,4 @@
 {
-  "source": "db",
   "imageFolderPath": "/Users/mac24/a/projects/photos_old/images3",
   "dataDir": "/Users/mac24/a/projects/photos_old",
   "dbName": "photos3.db",
@@ -9,7 +8,6 @@
   "comment1": "this line is ignored",
   "orderBy": "path, name",
   "displayTimeMs": 5000,
-  "maxDepth": 6,
   "maxFiles": 2000,
   "logLevel": "INFO"
 }

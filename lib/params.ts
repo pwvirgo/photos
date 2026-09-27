@@ -1,13 +1,10 @@
 import { logger, LogLevel } from "./logger.ts";
 
-export type Source = "folder" | "db";
-
 // A params problem that has already been logged and explained. Entry points
 // exit on it quietly rather than printing the same line a second time.
 export class ParamsError extends Error {}
 
 export interface Params {
-  source: Source;
   imageFolderPath: string;
   dataDir: string;
   dbName: string;
@@ -15,15 +12,12 @@ export interface Params {
   whereClause: string;
   orderBy: string;
   displayTimeMs: number;
-  maxDepth: number;
   maxFiles: number;
   logLevel: LogLevel;
 }
 
 const DEFAULT_PARAMS: Params = {
-  source: "folder",
-  // No default: a folder-mode file must name its own root, and an invented
-  // path just moves the failure somewhere less obvious.
+  // No default: an invented path just moves the failure somewhere less obvious.
   imageFolderPath: "",
   dataDir: "../photos",
   dbName: "photos3.db",
@@ -31,7 +25,6 @@ const DEFAULT_PARAMS: Params = {
   whereClause: "",
   orderBy: "",
   displayTimeMs: 5000,
-  maxDepth: 3,
   maxFiles: 200,
   logLevel: "INFO",
 };
@@ -47,7 +40,6 @@ export async function loadParams(paramsPath: string): Promise<Params> {
     const parsed = JSON.parse(text);
 
     const params: Params = {
-      source: parsed.source ?? DEFAULT_PARAMS.source,
       imageFolderPath: parsed.imageFolderPath ?? DEFAULT_PARAMS.imageFolderPath,
       dataDir: parsed.dataDir ?? DEFAULT_PARAMS.dataDir,
       dbName: parsed.dbName ?? DEFAULT_PARAMS.dbName,
@@ -55,7 +47,6 @@ export async function loadParams(paramsPath: string): Promise<Params> {
       whereClause: parsed.whereClause ?? DEFAULT_PARAMS.whereClause,
       orderBy: parsed.orderBy ?? DEFAULT_PARAMS.orderBy,
       displayTimeMs: parsed.displayTimeMs ?? DEFAULT_PARAMS.displayTimeMs,
-      maxDepth: parsed.maxDepth ?? DEFAULT_PARAMS.maxDepth,
       maxFiles: parsed.maxFiles ?? DEFAULT_PARAMS.maxFiles,
       logLevel: parsed.logLevel ?? DEFAULT_PARAMS.logLevel,
     };
@@ -73,12 +64,6 @@ export async function loadParams(paramsPath: string): Promise<Params> {
     if (!params.trashDir) params.trashDir = `${params.dataDir}/trash`;
 
     // Validate params
-    if (params.source !== "folder" && params.source !== "db") {
-      throw new Error('source must be "folder" or "db"');
-    }
-    if (params.source === "folder" && (typeof params.imageFolderPath !== "string" || params.imageFolderPath.length === 0)) {
-      throw new Error("imageFolderPath must be a non-empty string");
-    }
     for (const key of ["dataDir", "dbName", "trashDir"] as const) {
       if (typeof params[key] !== "string" || params[key].length === 0) {
         throw new Error(`${key} must be a non-empty string`);
@@ -90,14 +75,11 @@ export async function loadParams(paramsPath: string): Promise<Params> {
     if (typeof params.displayTimeMs !== "number" || params.displayTimeMs < 100) {
       throw new Error("displayTimeMs must be a number >= 100");
     }
-    if (typeof params.maxDepth !== "number" || params.maxDepth < 1) {
-      throw new Error("maxDepth must be a number >= 1");
-    }
     if (typeof params.maxFiles !== "number" || params.maxFiles < 1) {
       throw new Error("maxFiles must be a number >= 1");
     }
 
-    logger.debug(`Params loaded: source=${params.source}, db=${dbFile(params)}, trashDir=${params.trashDir}`);
+    logger.debug(`Params loaded: db=${dbFile(params)}, trashDir=${params.trashDir}`);
     return params;
   } catch (error) {
     // A missing file is fatal, not a warning. Falling back to DEFAULT_PARAMS
@@ -148,12 +130,3 @@ export function noParamsFileMessage(dir = "."): string {
   return `No params file given. Use --params=<file>\n       Available: ${list}`;
 }
 
-// A params file declares which app it belongs to in `source`; that, not the
-// file name, is what links a file to the software that may use it. Scripts
-// that only make sense in one mode check it here and refuse to guess.
-// Returns an explanation when the file is for the other mode, else null.
-export function sourceMismatch(params: Params, want: Source, paramsPath: string): string | null {
-  if (params.source === want) return null;
-  return `${paramsPath} is a "${params.source}" params file, but this needs source="${want}". ` +
-    `Pass the right one with --params=<file>.`;
-}
