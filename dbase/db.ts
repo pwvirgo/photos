@@ -145,7 +145,7 @@ export interface ImageInfo {
 
 export function getImageInfo(db: DatabaseSync, fotoId: number): ImageInfo | null {
   const stmt = db.prepare(
-    "SELECT img_id, path, name, dt_taken, dt_created, bytes, img_size, camera, duration, MD5 AS md5 FROM fotos WHERE img_id = ?"
+    "SELECT img_id, path, name, dt_taken, dt_created, bytes, img_size, camera, duration, md5 FROM fotos WHERE img_id = ?"
   );
   const row = stmt.get(fotoId) as FotoRow | undefined;
   if (!row) return null;

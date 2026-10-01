@@ -25,7 +25,7 @@ def main():
         return
 
     # Prepare new fieldnames:
-    # Remove 'SourceFile', add 'Directory', 'Filename', and 'MD5'.
+    # Remove 'SourceFile', add 'Directory', 'Filename', and 'md5'.
     # FileModifyDate is also dropped here -- it's only a fallback input for
     # CreateDate (see below), not one of the fotos table columns, so it
     # must not appear in the output CSV or it'll shift every column after
@@ -33,8 +33,8 @@ def main():
     new_fields = ['path', 'filename'] + [
         f for f in reader.fieldnames if f not in ('SourceFile', 'FileModifyDate')
     ]
-    if 'MD5' not in new_fields:
-        new_fields.append('MD5')
+    if 'md5' not in new_fields:
+        new_fields.append('md5')
 
     # Write to standard output
     writer = csv.DictWriter(sys.stdout, fieldnames=new_fields)
@@ -57,7 +57,7 @@ def main():
             # Populate new columns
             row['path'] = directory
             row['filename'] = filename
-            row['MD5'] = get_md5(original_path)
+            row['md5'] = get_md5(original_path)
 
             # dt_created (CreateDate) is EXIF metadata -- some files (e.g.
             # Photo Booth captures) have no EXIF at all, so it comes back

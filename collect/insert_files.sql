@@ -15,7 +15,7 @@ CREATE TABLE staging (
 
 INSERT INTO fotos (
     path, name, status, bytes, dt_taken, dt_created, camera, lens, lat, lon,
-    img_size, duration, MD5
+    img_size, duration, md5
 )
 SELECT c1, c2, 'ok', c3, c4, c5, c6, c7, c8, c9, c10, c11, c12 FROM staging;
 

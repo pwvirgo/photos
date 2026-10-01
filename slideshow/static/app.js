@@ -127,8 +127,8 @@
     if (!isInfoVisible) return;
     var kb = currentBytes !== null ? Math.round(currentBytes / 1024) + ' KB' : 'Unknown';
     infoOverlay.textContent =
-      'IMG_ID: ' + (currentFotoId !== null ? currentFotoId : 'Unknown') +
-        '   MD5: ' + (currentMd5 || 'Unknown') + '\n' +
+      'img_id: ' + (currentFotoId !== null ? currentFotoId : 'Unknown') +
+        '   md5: ' + (currentMd5 || 'Unknown') + '\n' +
       'Name: ' + (currentFilename || 'Unknown') + '\n' +
       'Camera: ' + (currentCamera || 'Unknown') + '\n' +
       'Path: ' + (currentPath || 'Unknown') + '\n' +

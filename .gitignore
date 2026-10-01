@@ -5,3 +5,5 @@ slideshow.log
 curate.log
 .discuss
 .gitignore
+philNotes/*
+!philNotes/bugs.md
