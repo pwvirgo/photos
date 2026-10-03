@@ -9,19 +9,20 @@
 //   3. every fotos.status!='deleted' row has a file at its path/name
 //
 // Checks every row every time — never mutates anything, so there's no
-// blast radius to cap and no dry-run/--execute split. Db file and image
-// root come from the params file named by --params (dataDir/dbName,
-// imageFolderPath).
+// blast radius to cap and no dry-run/--execute split. The db file comes
+// from params_shared.json at the project root (dbDir/dbName).
 //
-// stdout only. Exit code 0 if all three checks pass, 1 otherwise.
+// Reports to stdout. The only file it may write is curate.log, and only if
+// loading params raises a warning — hence --allow-write. Exit code 0 if all
+// three checks pass, 1 otherwise.
 // ==========================================
-//   deno run --allow-read validate.ts --params=params_curate.json
+//   deno run --allow-read --allow-write validate.ts --params=params_curate.json
 // ==========================================
 
 // ==========================================
 
 import { loadParams, paramsPathFromArgs, noParamsFileMessage, ParamsError, dbFile } from "../lib/params.ts";
-import { openDbReadOnly, fileExists } from "../dbase/db.ts";
+import { openDbReadOnly, fileExists, checkLibrary } from "../dbase/db.ts";
 
 interface ActionMismatchRow {
   action_id: number;
@@ -43,21 +44,21 @@ async function main(): Promise<void> {
   }
   const params = await loadParams(paramsFile);
   const dbPath = dbFile(params);
-  const imageRoot = params.imageFolderPath.replace(/\/+$/, "");
 
-  console.log(`=== validate.ts — db ${dbPath}   root ${imageRoot} ===\n`);
+  console.log(`=== validate.ts — db ${dbPath} ===\n`);
 
-  // Unmounted-volume guard: without this, every live row's file would look
-  // missing at once, and Check 3 would report a wall of false violations.
-  try {
-    if (!Deno.statSync(imageRoot).isDirectory) throw new Error();
-  } catch {
-    console.log(`ABORT — image root not found: ${imageRoot}`);
-    console.log("The library looks unavailable (volume not mounted?). No checks were run.");
+  const db = openDbReadOnly(dbPath);
+
+  // Library guard: without this, every live row's file would look missing
+  // at once, and Check 3 would report a wall of false violations.
+  const library = checkLibrary(db);
+  if (!library.reachable) {
+    console.log(`ABORT — none of the ${library.folders} image folder(s) in fotos.path exist, e.g. ${library.example}`);
+    console.log(`The library looks unavailable (volume not mounted, stale paths, or wrong directory: ${Deno.cwd()}). No checks were run.`);
+    db.close();
     Deno.exit(1);
   }
 
-  const db = openDbReadOnly(dbPath);
   let overallPass = true;
 
   try {

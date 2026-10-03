@@ -1,5 +1,5 @@
 import { logger, LogLevel } from "../lib/logger.ts";
-import { loadParams, paramsPathFromArgs, noParamsFileMessage, ParamsError, Params, dbFile } from "../lib/params.ts";
+import { loadParams, paramsPathFromArgs, noParamsFileMessage, ParamsError, Params, dbFile, SHARED_PARAMS_FILE } from "../lib/params.ts";
 import { openDb, queryImages, insertAction, insertNote, hasMissingNote, fileExists, getImageInfo, DbImage } from "../dbase/db.ts";
 import { DatabaseSync } from "node:sqlite";
 
@@ -160,8 +160,8 @@ async function main(): Promise<void> {
     if (pathname === "/api/params" && request.method === "GET") {
       return jsonResponse({
         paramsFile,
-        imageFolderPath: params.imageFolderPath,
-        dataDir: params.dataDir,
+        sharedParamsFile: SHARED_PARAMS_FILE,
+        dbDir: params.dbDir,
         dbName: params.dbName,
         trashDir: params.trashDir,
         whereClause: params.whereClause,
@@ -180,13 +180,10 @@ async function main(): Promise<void> {
         const text = await Deno.readTextFile(paramsFile);
         const current = JSON.parse(text);
 
-        if (body.dataDir !== undefined) current.dataDir = body.dataDir;
-        if (body.dbName !== undefined) current.dbName = body.dbName;
-        if (body.trashDir !== undefined) current.trashDir = body.trashDir;
-        if (body.dataDir !== undefined || body.dbName !== undefined) delete current.dbPath;
+        // dbDir/dbName/trashDir are shared by every module and live in
+        // SHARED_PARAMS_FILE; this page shows them but never writes them.
         if (body.whereClause !== undefined) current.whereClause = body.whereClause;
         if (body.orderBy !== undefined) current.orderBy = body.orderBy;
-        if (body.imageFolderPath !== undefined) current.imageFolderPath = body.imageFolderPath;
         if (body.maxFiles !== undefined) current.maxFiles = body.maxFiles;
 
         await Deno.writeTextFile(paramsFile, JSON.stringify(current, null, 2) + "\n");
@@ -225,10 +222,10 @@ async function main(): Promise<void> {
       let errorInfo: { error: string; suggestion: string } | null = null;
       if (startupError) {
         // Database error (invalid path or SQL error)
-        if (startupError.includes("unable to open database")) {
+        if (startupError.includes("unable to open database") || startupError.includes("Database not found")) {
           errorInfo = {
             error: `Cannot open database: ${dbFile(params)}`,
-            suggestion: `Check that dataDir and dbName in ${paramsFile} point to a valid SQLite file.`,
+            suggestion: `Check that dbDir and dbName in ${SHARED_PARAMS_FILE} point to a valid SQLite file.`,
           };
         } else if (startupError.includes("syntax error")) {
           errorInfo = {

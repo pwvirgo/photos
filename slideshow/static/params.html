@@ -41,21 +41,26 @@
       </div>
     </div>
 
-    <!-- DB fields -->
+    <!-- DB fields. Read-only: shared by every module, set in the shared
+         params file (shown below), not here. -->
     <div id="db-params">
+      <div class="field">
+        <label for="sharedParamsFile">Shared params file</label>
+        <input type="text" id="sharedParamsFile" class="input" value="" readonly>
+      </div>
       <div class="row">
         <div class="field">
-          <label for="dataDir">Data folder</label>
-          <input type="text" id="dataDir" class="input" value="" placeholder="e.g. ../photos">
+          <label for="dbDir">Database folder</label>
+          <input type="text" id="dbDir" class="input" value="" readonly>
         </div>
         <div class="field">
           <label for="dbName">Database file</label>
-          <input type="text" id="dbName" class="input" value="" placeholder="e.g. photos3.db">
+          <input type="text" id="dbName" class="input" value="" readonly>
         </div>
       </div>
       <div class="field">
         <label for="trashDir">Trash folder</label>
-        <input type="text" id="trashDir" class="input" value="" placeholder="e.g. ../photos/trash">
+        <input type="text" id="trashDir" class="input" value="" readonly>
       </div>
       <div class="field">
         <label for="whereClause">where clause</label>
@@ -65,12 +70,6 @@
         <label for="orderBy">order by</label>
         <input type="text" id="orderBy" class="input" value="" placeholder="e.g. dt_taken DESC">
       </div>
-    </div>
-
-    <!-- Image folder path -->
-    <div class="field">
-      <label for="imageFolderPath">Image folder path</label>
-      <input type="text" id="imageFolderPath" class="input" value="">
     </div>
 
     <div class="row">

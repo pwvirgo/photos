@@ -39,7 +39,7 @@ Both scripts default to a dry run; nothing changes until `--execute`.
 | `notesToActions.sql` | Staging. `notes` → pending `actions`. |
 | `executeDeletions.ts` | Execution. Moves files, writes `actions` and `fotos.status`. |
 | `validate.ts` | Read-only audit: done deletes vs. `fotos.status`, deleted rows vs. files on disk, live rows vs. files on disk. Writes nothing, not even a log — reads straight off stdout. |
-| `params_curate.json` | This module's params, pointed at `photos_old`'s live db and images — same data `slideshow` uses, no second copy. |
+| `params_curate.json` | This module's params (log level). The db location comes from `../params_shared.json`, the same file `slideshow` uses. |
 | `curate.log` | Append-only log, written by `findMissing.ts` and `executeDeletions.ts`, in this directory. |
 | `history/migrate.sql` | Archived migration SQL from an earlier db rebuild. Reference only. |
 
@@ -72,8 +72,9 @@ deno run --allow-read --allow-write executeDeletions.ts --params=$PARAMS --execu
 # 4. Stage new deletes from notes
 sqlite3 -init /dev/null -batch $DB < notesToActions.sql
 
-# 5. Audit the three invariants (read-only, no log file, no --execute)
-deno run --allow-read validate.ts --params=$PARAMS
+# 5. Audit the three invariants (read-only on db and images, no --execute;
+#    --allow-write only so a params warning can reach curate.log)
+deno run --allow-read --allow-write validate.ts --params=$PARAMS
 ```
 
 Staging (`notesToActions.sql`) refuses to run while any `delete` action is

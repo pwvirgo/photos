@@ -1,3 +1,22 @@
+## params need to be rethought
+currently each module has it's own params, but the name and location of the database should not vary by module.
+
+the dataDir should be called dbDir
+
+The lib should not need params!?!??  Things had been hardcoded - then I decided they should be params - and now I am wonder how the code id organized - should these params be arguments to functions?  (I've avoided reading that code)
+
+## fix the menu
+all options should be collected the same way - by a keystroke.  What about as a link also?  Only if the code is simple and easy to maintain.
+
+## fix the url - or else
+There should be a way for the user to jump to any image.  This is possible now by esc->settings and then the last param index=23 can be typed over when user resumes slideshow.
+
+## curate/validate.ts
+1) is not in REAME - should be 1st in order of exec
+2) It should print the count(*), status of fotos 1st.  Then do the fotos status check
+
+
+
 - renaming the folder that holds the images (or the db) silently breaks every `fotos.path` — nothing errors, `curate/findMissing.ts` just starts reporting every image as missing.
 
 The one-time fix is `UPDATE fotos SET path = replace(path, '<old>', '<new>')`, verify `still_old = 0`, then re-run `findMissing.ts` as a dry run to confirm 0 changes. Same situation applies when porting to another machine. Worth building a guard or a helper for this rather than relying on remembering the fix.

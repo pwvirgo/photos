@@ -17,15 +17,14 @@
 //
 // Trash is flat and never emptied here — the user empties it by hand.
 //
-// Guard: if the shared image root (params.imageFolderPath) is not there, the
-// run aborts without changing anything — the unmounted-volume case. It does NOT
-// check each image's own folder: a folder you deleted on purpose is a file-gone,
-// not a reason to leave the action pending.
+// Guard: if none of the folders in fotos.path exists (checkLibrary in
+// dbase/db.ts), the run aborts without changing anything — the unmounted-volume
+// or stale-path case. One existing folder is enough: a folder you deleted on
+// purpose is a file-gone, not a reason to leave the action pending.
 //
-// Dry-run by default. Db file, trash folder and image root all come from the
-// params file named by --params (dataDir/dbName, trashDir, imageFolderPath).
-// That file is the only way to say which data a run acts on: --params is
-// required.
+// Dry-run by default. Db file and trash folder come from params_shared.json
+// at the project root (dbDir/dbName, trashDir); --params names this module's
+// own file and is required.
 // Prints a counts summary only; --verbose adds a line per image. Anything
 // needing attention (failure, conflict, skip) is always printed. Everything
 // printed is also appended to curate.log (relative to the current directory,
@@ -33,7 +32,7 @@
 //   deno run --allow-read --allow-write executeDeletions.ts --params=<file> [--execute] [--limit N] [--verbose]
 
 import { loadParams, paramsPathFromArgs, noParamsFileMessage, ParamsError, dbFile } from "../lib/params.ts";
-import { openDb, fileExists } from "../dbase/db.ts";
+import { openDb, fileExists, checkLibrary } from "../dbase/db.ts";
 import { logger } from "../lib/logger.ts";
 
 interface PendingRow {
@@ -50,7 +49,7 @@ function argValue(flag: string): string | undefined {
 
 // "a.b.jpg", 42 -> "a.b_42.jpg"; names without an extension just get "_42".
 const SCRIPT = "executeDeletions.ts";
-const LOG_PATH = "curate.log";
+const LOG_PATH = logger.logFile();
 const encoder = new TextEncoder();
 let logFile: Deno.FsFile | null = null;
 
@@ -68,14 +67,6 @@ function say(msg = ""): void {
 function taggedName(name: string, imgId: number): string {
   const dot = name.lastIndexOf(".");
   return dot > 0 ? `${name.slice(0, dot)}_${imgId}${name.slice(dot)}` : `${name}_${imgId}`;
-}
-
-function dirExists(path: string): boolean {
-  try {
-    return Deno.statSync(path).isDirectory;
-  } catch {
-    return false;
-  }
 }
 
 async function main(): Promise<void> {
@@ -96,27 +87,28 @@ async function main(): Promise<void> {
   logger.setLogLevel(params.logLevel);
   const dbPath = dbFile(params);
   const trashDir = params.trashDir.replace(/\/+$/, "");
-  const imageRoot = params.imageFolderPath.replace(/\/+$/, "");
 
   say("");
   say(`=== ${SCRIPT} — ${execute ? "EXECUTING" : "DRY RUN"} ===`);
   say(`run_at ${new Date().toLocaleString()}   params ${paramsFile}`);
   say(`db ${dbPath}   trash ${trashDir}\n`);
 
-  // Unmounted-volume guard, checked once for the whole run — the same guard
+  const db = openDb(dbPath);
+
+  // Library guard, checked once for the whole run — the same guard
   // curate/findMissing.ts uses. This replaces a per-image check of each row's
   // own folder: that could not tell a disconnected volume from a folder the
   // owner deliberately deleted, so it skipped the latter and left its action
   // pending forever, which in turn blocked notesToActions.sql from ever
-  // staging anything new. Checking the one shared root distinguishes the two.
-  if (!dirExists(imageRoot)) {
-    say(`ABORT — image root not found: ${imageRoot}`);
-    say("The library looks unavailable (volume not mounted?). Nothing was changed.");
-    logger.error(`executeDeletions: image root not found, aborted: ${imageRoot}`);
+  // staging anything new. Asking whether any catalog folder exists
+  // distinguishes the two.
+  const library = checkLibrary(db);
+  if (!library.reachable) {
+    say(`ABORT — none of the ${library.folders} image folder(s) in fotos.path exist, e.g. ${library.example}`);
+    say(`The library looks unavailable (volume not mounted, stale paths, or wrong directory: ${Deno.cwd()}). Nothing was changed.`);
+    logger.error(`executeDeletions: no image folder in fotos.path exists, aborted (e.g. ${library.example})`);
     Deno.exit(1);
   }
-
-  const db = openDb(dbPath);
 
   const duplicateWhere =
     `action = 'delete' AND status = 'pending' AND action_id NOT IN (
@@ -223,7 +215,7 @@ async function main(): Promise<void> {
       continue;
     }
 
-    // No per-folder check here: the image root was verified once at startup.
+    // No per-folder check here: the library was verified once at startup.
     // A missing folder at this point means the owner deleted it, which is a
     // file-gone, not a reason to freeze the action.
     counts.fileGone++;

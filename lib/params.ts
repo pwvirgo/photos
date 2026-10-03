@@ -5,10 +5,11 @@ import { logger, LogLevel } from "./logger.ts";
 export class ParamsError extends Error {}
 
 export interface Params {
-  imageFolderPath: string;
-  dataDir: string;
+  // From the shared file (SHARED_PARAMS_FILE) — the same for every module.
+  dbDir: string;
   dbName: string;
   trashDir: string;
+  // From the module's own file (--params).
   whereClause: string;
   orderBy: string;
   displayTimeMs: number;
@@ -16,61 +17,79 @@ export interface Params {
   logLevel: LogLevel;
 }
 
-const DEFAULT_PARAMS: Params = {
-  // No default: an invented path just moves the failure somewhere less obvious.
-  imageFolderPath: "",
-  dataDir: "../photos",
-  dbName: "photos3.db",
-  trashDir: "../photos/trash",
+// Where the database lives is one fact, so it is in one file at the project
+// root, not repeated in each module's params file — two copies had already
+// drifted apart. Located from this source file, so it is found whatever the
+// current directory is. The values inside it are not: a relative dbDir or
+// trashDir still resolves from the current directory, which works because
+// every module is run from its own folder one level below the root.
+export const SHARED_PARAMS_FILE = new URL("../params_shared.json", import.meta.url).pathname;
+
+// Keys that belong in SHARED_PARAMS_FILE. Found in a module file they are
+// ignored, with a warning, so a stale copy can never quietly win.
+const SHARED_KEYS = ["dbDir", "dbName", "trashDir", "dataDir", "dbPath"];
+
+const DEFAULT_PARAMS = {
   whereClause: "",
   orderBy: "",
   displayTimeMs: 5000,
   maxFiles: 200,
-  logLevel: "INFO",
+  logLevel: "INFO" as LogLevel,
 };
 
-// Full path to the SQLite file. Relative dataDir resolves from the project root.
+// Full path to the SQLite file. A relative dbDir resolves from the current
+// directory.
 export function dbFile(params: Params): string {
-  return `${params.dataDir.replace(/\/+$/, "")}/${params.dbName}`;
+  return `${params.dbDir.replace(/\/+$/, "")}/${params.dbName}`;
+}
+
+async function readJson(path: string): Promise<Record<string, unknown>> {
+  try {
+    return JSON.parse(await Deno.readTextFile(path));
+  } catch (error) {
+    // A missing file is fatal, not a warning. Falling back to defaults only
+    // ever produced a program pointed at a folder that does not exist on
+    // this machine, several lines after the real problem.
+    const message = error instanceof Deno.errors.NotFound
+      ? `Params file not found: ${path}`
+      : `Failed to load params from ${path}: ${error}`;
+    logger.error(message);
+    throw new ParamsError(message);
+  }
 }
 
 export async function loadParams(paramsPath: string): Promise<Params> {
+  const shared = await readJson(SHARED_PARAMS_FILE);
+  const parsed = await readJson(paramsPath);
   try {
-    const text = await Deno.readTextFile(paramsPath);
-    const parsed = JSON.parse(text);
+    if (shared.dataDir !== undefined) {
+      throw new Error(`"dataDir" was renamed to "dbDir" — rename it in ${SHARED_PARAMS_FILE}`);
+    }
+    for (const key of SHARED_KEYS) {
+      if (parsed[key] !== undefined) {
+        logger.warn(`${paramsPath}: "${key}" ignored — the database location comes from ${SHARED_PARAMS_FILE}. Remove it.`);
+      }
+    }
 
-    const params: Params = {
-      imageFolderPath: parsed.imageFolderPath ?? DEFAULT_PARAMS.imageFolderPath,
-      dataDir: parsed.dataDir ?? DEFAULT_PARAMS.dataDir,
-      dbName: parsed.dbName ?? DEFAULT_PARAMS.dbName,
-      trashDir: parsed.trashDir ?? "",
+    const params = {
+      dbDir: shared.dbDir,
+      dbName: shared.dbName,
+      trashDir: shared.trashDir ?? `${shared.dbDir}/trash`,
       whereClause: parsed.whereClause ?? DEFAULT_PARAMS.whereClause,
       orderBy: parsed.orderBy ?? DEFAULT_PARAMS.orderBy,
       displayTimeMs: parsed.displayTimeMs ?? DEFAULT_PARAMS.displayTimeMs,
       maxFiles: parsed.maxFiles ?? DEFAULT_PARAMS.maxFiles,
       logLevel: parsed.logLevel ?? DEFAULT_PARAMS.logLevel,
-    };
-
-    // dbPath (full path to the db file) was replaced by dataDir + dbName.
-    // Split an old value rather than silently misreading it as a folder.
-    if (parsed.dbPath !== undefined && parsed.dataDir === undefined && parsed.dbName === undefined) {
-      const slash = String(parsed.dbPath).lastIndexOf("/");
-      params.dataDir = slash >= 0 ? parsed.dbPath.slice(0, slash) : ".";
-      params.dbName = parsed.dbPath.slice(slash + 1);
-      logger.warn(`${paramsPath}: "dbPath" is obsolete — using dataDir="${params.dataDir}", dbName="${params.dbName}". Replace it with those two keys.`);
-    } else if (parsed.dbPath !== undefined) {
-      logger.warn(`${paramsPath}: obsolete "dbPath" ignored — dataDir/dbName are used instead.`);
-    }
-    if (!params.trashDir) params.trashDir = `${params.dataDir}/trash`;
+    } as Params;
 
     // Validate params
-    for (const key of ["dataDir", "dbName", "trashDir"] as const) {
+    for (const key of ["dbDir", "dbName", "trashDir"] as const) {
       if (typeof params[key] !== "string" || params[key].length === 0) {
-        throw new Error(`${key} must be a non-empty string`);
+        throw new Error(`${key} must be a non-empty string in ${SHARED_PARAMS_FILE}`);
       }
     }
     if (params.dbName.includes("/")) {
-      throw new Error("dbName must be a file name only — put the folder in dataDir");
+      throw new Error("dbName must be a file name only — put the folder in dbDir");
     }
     if (typeof params.displayTimeMs !== "number" || params.displayTimeMs < 100) {
       throw new Error("displayTimeMs must be a number >= 100");
@@ -82,17 +101,9 @@ export async function loadParams(paramsPath: string): Promise<Params> {
     logger.debug(`Params loaded: db=${dbFile(params)}, trashDir=${params.trashDir}`);
     return params;
   } catch (error) {
-    // A missing file is fatal, not a warning. Falling back to DEFAULT_PARAMS
-    // only ever produced a server pointed at a folder that does not exist on
-    // this machine, several lines after the real problem — worse still once
-    // --params made a typo in the file name possible.
-    if (error instanceof Deno.errors.NotFound) {
-      const message = `Params file not found: ${paramsPath}`;
-      logger.error(message);
-      throw new ParamsError(message);
-    }
-    logger.error(`Failed to load params from ${paramsPath}: ${error}`);
-    throw new ParamsError(`Failed to load params from ${paramsPath}: ${error}`);
+    const message = `Bad params: ${error instanceof Error ? error.message : error}`;
+    logger.error(message);
+    throw new ParamsError(message);
   }
 }
 

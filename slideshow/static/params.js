@@ -6,12 +6,12 @@
   var displayTimeMsInput = document.getElementById('displayTimeMs');
   var logLevelSelect = document.getElementById('logLevel');
   var paramsFileInput = document.getElementById('paramsFile');
-  var dataDirInput = document.getElementById('dataDir');
+  var sharedParamsFileInput = document.getElementById('sharedParamsFile');
+  var dbDirInput = document.getElementById('dbDir');
   var dbNameInput = document.getElementById('dbName');
   var trashDirInput = document.getElementById('trashDir');
   var whereClauseInput = document.getElementById('whereClause');
   var orderByInput = document.getElementById('orderBy');
-  var imageFolderPathInput = document.getElementById('imageFolderPath');
   var maxFilesInput = document.getElementById('maxFiles');
   var indexInput = document.getElementById('index');
   var statusEl = document.getElementById('status');
@@ -38,12 +38,12 @@
       }
       logLevelSelect.value = params.logLevel;
       paramsFileInput.value = params.paramsFile || '(unknown)';
-      dataDirInput.value = params.dataDir || '';
+      sharedParamsFileInput.value = params.sharedParamsFile || '(unknown)';
+      dbDirInput.value = params.dbDir || '';
       dbNameInput.value = params.dbName || '';
       trashDirInput.value = params.trashDir || '';
       whereClauseInput.value = params.whereClause || '';
       orderByInput.value = params.orderBy || '';
-      imageFolderPathInput.value = params.imageFolderPath || '';
       maxFilesInput.value = params.maxFiles || 200;
     } catch (error) {
       console.error('Failed to load params:', error);
@@ -84,12 +84,8 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          dataDir: dataDirInput.value,
-          dbName: dbNameInput.value,
-          trashDir: trashDirInput.value,
           whereClause: whereClauseInput.value,
           orderBy: orderByInput.value,
-          imageFolderPath: imageFolderPathInput.value,
           maxFiles: parseInt(maxFilesInput.value) || 200,
         }),
       });

@@ -1,5 +1,3 @@
-const LOG_FILE = "slideshow.log";
-
 export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
 
 const LEVEL_ORDER: Record<LogLevel, number> = {
@@ -10,6 +8,18 @@ const LEVEL_ORDER: Record<LogLevel, number> = {
 };
 
 let currentLevel: LogLevel = "INFO";
+
+// The log is named after the module being run — the folder holding the
+// entry-point script: curate/findMissing.ts -> curate.log, slideshow/
+// slideshow.ts -> slideshow.log. Nobody sets it, so nobody can get it wrong;
+// a fixed name here once sent curate's log lines into slideshow.log. Written
+// to the current directory, per the run-from-your-module's-folder rule.
+const LOG_FILE = `${new URL(".", Deno.mainModule).pathname.split("/").filter(Boolean).pop()}.log`;
+
+// For callers that write their own lines to the same file (curate's say()).
+export function logFile(): string {
+  return LOG_FILE;
+}
 
 export function setLogLevel(level: LogLevel): void {
   currentLevel = level;
@@ -78,4 +88,4 @@ export function debug(message: string): void {
   writeToFile(formatted);
 }
 
-export const logger = { info, warn, error, debug, setLogLevel, getLogLevel };
+export const logger = { info, warn, error, debug, setLogLevel, getLogLevel, logFile };

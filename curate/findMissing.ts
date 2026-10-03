@@ -23,15 +23,14 @@
 // -> curate/executeDeletions.ts). That split is what makes auto-clearing safe: a
 // bad scan can annotate, but it can never stage a deletion.
 //
-// Guard: if the shared image root (params.imageFolderPath) is not there, the
-// run aborts without writing anything. That is the unmounted-volume case, where
-// every file would otherwise look missing at once. It deliberately does NOT
-// check each image's own folder — a folder you deleted on purpose should still
-// be flagged.
+// Guard: if none of the folders in fotos.path exists (checkLibrary in
+// dbase/db.ts), the run aborts without writing anything. That is the
+// unmounted-volume or stale-path case, where every file would otherwise look
+// missing at once. One existing folder is enough — a folder you deleted on
+// purpose should still be flagged.
 //
-// Dry-run by default. Db file and image root both come from the params file
-// named by --params (dataDir/dbName, imageFolderPath). That file is the only
-// way to say which data a run acts on: --params is required.
+// Dry-run by default. The db file comes from params_shared.json at the project
+// root (dbDir/dbName); --params names this module's own file and is required.
 // Prints a counts summary; --verbose adds a line per image. Everything printed
 // is also appended to curate.log (relative to the current directory, so run
 // from curate/), the same log notesToActions.sql and executeDeletions.ts write to.
@@ -41,6 +40,7 @@ import { loadParams, paramsPathFromArgs, noParamsFileMessage, ParamsError, dbFil
 import {
   openDb,
   fileExists,
+  checkLibrary,
   hasMissingNote,
   insertNote,
   deleteMissingNotes,
@@ -54,7 +54,7 @@ interface FotoRow {
 }
 
 const SCRIPT = "findMissing.ts";
-const LOG_PATH = "curate.log";
+const LOG_PATH = logger.logFile();
 const encoder = new TextEncoder();
 let logFile: Deno.FsFile | null = null;
 
@@ -74,14 +74,6 @@ function argValue(flag: string): string | undefined {
   return i >= 0 ? Deno.args[i + 1] : undefined;
 }
 
-function dirExists(path: string): boolean {
-  try {
-    return Deno.statSync(path).isDirectory;
-  } catch {
-    return false;
-  }
-}
-
 async function main(): Promise<void> {
   const execute = Deno.args.includes("--execute");
   const verbose = Deno.args.includes("--verbose");
@@ -99,22 +91,22 @@ async function main(): Promise<void> {
   const params = await loadParams(paramsFile);
   logger.setLogLevel(params.logLevel);
   const dbPath = dbFile(params);
-  const imageRoot = params.imageFolderPath.replace(/\/+$/, "");
 
   say("");
   say(`=== ${SCRIPT} — ${execute ? "EXECUTING" : "DRY RUN"} ===`);
   say(`run_at ${new Date().toLocaleString()}   params ${paramsFile}`);
-  say(`db ${dbPath}   root ${imageRoot}\n`);
-
-  // Unmounted-volume guard: bail before writing anything.
-  if (!dirExists(imageRoot)) {
-    say(`ABORT — image root not found: ${imageRoot}`);
-    say("The library looks unavailable (volume not mounted?). Nothing was changed.");
-    logger.error(`findMissing: image root not found, aborted: ${imageRoot}`);
-    Deno.exit(1);
-  }
+  say(`db ${dbPath}\n`);
 
   const db = openDb(dbPath);
+
+  // Library guard: bail before writing anything.
+  const library = checkLibrary(db);
+  if (!library.reachable) {
+    say(`ABORT — none of the ${library.folders} image folder(s) in fotos.path exist, e.g. ${library.example}`);
+    say(`The library looks unavailable (volume not mounted, stale paths, or wrong directory: ${Deno.cwd()}). Nothing was changed.`);
+    logger.error(`findMissing: no image folder in fotos.path exists, aborted (e.g. ${library.example})`);
+    Deno.exit(1);
+  }
 
   const all = db.prepare(
     "SELECT img_id, path, name FROM fotos WHERE status = 'ok' ORDER BY img_id"

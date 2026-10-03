@@ -41,7 +41,11 @@ function checkSqlFragment(clause: string, label: string): void {
   }
 }
 
+// Fails if the file is missing rather than letting SQLite create an empty
+// one: a wrong dbDir used to leave stray 0-byte photos3.db files behind and
+// fail later with "no such table". Creating the database is collect's job.
 export function openDb(dbPath: string): DatabaseSync {
+  if (!fileExists(dbPath)) throw new Error(`Database not found: ${dbPath}`);
   const db = new DatabaseSync(dbPath);
   // node:sqlite enforces foreign keys by default (unlike the sqlite3 CLI, which
   // is off by default). notes/actions keep img_id referencing fotos rows as an
@@ -61,8 +65,8 @@ export function openDb(dbPath: string): DatabaseSync {
 // database"), which is the real guard around hand-written SQL. No foreign_keys
 // pragma: that setting only affects writes.
 //
-// Unlike openDb(), this does not create the file if it is missing — a bad
-// dataDir/dbName fails loudly here instead of yielding an empty database.
+// Like openDb(), this does not create the file if it is missing — a bad
+// dbDir/dbName fails loudly here instead of yielding an empty database.
 export function openDbReadOnly(dbPath: string): DatabaseSync {
   const db = new DatabaseSync(dbPath, { readOnly: true });
   logger.debug(`Opened database read-only: ${dbPath}`);
@@ -76,6 +80,40 @@ export function fileExists(path: string): boolean {
   } catch {
     return false;
   }
+}
+
+export interface LibraryCheck {
+  reachable: boolean;
+  folders: number;
+  // One of the folders looked for, for the abort message.
+  example: string | null;
+}
+
+// Is the image library there at all? True if at least one folder holding a
+// status='ok' image exists (or there are no live images, so nothing to guard).
+// The curate scripts call this once before a run and abort when it is false:
+// that is the unmounted volume, the renamed image folder with stale
+// fotos.path values, and — because fotos.path may be relative — the run
+// started from the wrong directory. In each of those every file would
+// otherwise look missing at once.
+//
+// It deliberately asks for only ONE folder: a folder the owner deleted on
+// purpose must not stop a run, its files should be reported as gone.
+//
+// Read-only. Replaces the imageFolderPath param, which named a folder the
+// scripts never actually read from and so could disagree with fotos.path.
+export function checkLibrary(db: DatabaseSync): LibraryCheck {
+  const rows = db.prepare(
+    "SELECT DISTINCT path FROM fotos WHERE status = 'ok' ORDER BY path"
+  ).all() as unknown as { path: string }[];
+  const reachable = rows.length === 0 || rows.some((row) => {
+    try {
+      return Deno.statSync(row.path).isDirectory;
+    } catch {
+      return false;
+    }
+  });
+  return { reachable, folders: rows.length, example: rows[0]?.path ?? null };
 }
 
 export interface QueryResult {

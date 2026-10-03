@@ -16,7 +16,7 @@ deno run --allow-read --allow-net --allow-write slideshow.ts --params=params_sli
 ```
 
 Opens at `http://localhost:8000`. Run from this directory — `slideshow.ts`
-serves `./static/*` and `logger.ts` writes `slideshow.log` relative to the
+serves `./static/*` and `logger.ts` writes `slideshow.log` (named after this module) relative to the
 current working directory, per the "run each module from its own directory"
 decision.
 
@@ -27,5 +27,6 @@ decision.
   from `../dbase/db.ts`.
 - **`static/`** — frontend: `slides.html`/`app.js` (the viewer), `params.html`/
   `params.js` (the settings page), `styles.css`.
-- **`params_slideshow.json`** — this module's params file. `dataDir` and
-  `imageFolderPath` point straight at `photos_old`.
+- **`params_slideshow.json`** — this module's params file (query,
+  timing, log level). The database location is shared by every module and
+  lives in `../params_shared.json`; image locations come from `fotos.path`.

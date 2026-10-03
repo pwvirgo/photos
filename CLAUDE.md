@@ -24,8 +24,8 @@ The reason for the module split. No module trespasses on another's scope.
 ## Running
 
 Run each module from its own directory — several scripts resolve paths
-relative to cwd (`slideshow` serves `./static/*`, `curate` and
-`lib/logger.ts` write log files to cwd). Exact commands live in each
+relative to cwd (`slideshow` serves `./static/*`; each module writes its
+own log file — `lib/logger.ts` names it after the module — to cwd). Exact commands live in each
 module's own `README.md`.
 
 ## Fragile bits
