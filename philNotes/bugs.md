@@ -12,6 +12,7 @@ all options should be collected the same way - by a keystroke.  What about as a 
 There should be a way for the user to jump to any image.  This is possible now by esc->settings and then the last param index=23 can be typed over when user resumes slideshow.
 
 ## curate/validate.ts
+0) it does not check that every fotos.status='delete' is in the actions table.
 1) is not in REAME - should be 1st in order of exec
 2) It should print the count(*), status of fotos 1st.  Then do the fotos status check
 

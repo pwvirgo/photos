@@ -7,3 +7,4 @@ curate.log
 .gitignore
 philNotes/*
 !philNotes/bugs.md
+images/

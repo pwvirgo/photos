@@ -3,8 +3,9 @@
 // Read-only auditor for three invariants between fotos/actions and the
 // files on disk:
 //
-//   1. every actions row with action='delete', status IN ('done','gone') has
-//      fotos.status='deleted' for that img_id
+//   1. actions rows with action='delete', status IN ('done','gone') and
+//      fotos.status='deleted' rows agree 1 to 1: each such action's img_id
+//      is marked deleted, and each deleted row has exactly one such action
 //   2. every fotos.status='deleted' row has no file at its path/name
 //   3. every fotos.status!='deleted' row has a file at its path/name
 //
@@ -12,7 +13,10 @@
 // blast radius to cap and no dry-run/--execute split. The db file comes
 // from params_shared.json at the project root (dbDir/dbName).
 //
-// Reports to stdout. The only file it may write is curate.log, and only if
+// Prints row counts for fotos/notes/actions first, as context only — they
+// do not affect the result.
+//
+// Reports to stdout.The only file it may write is curate.log, and only if
 // loading params raises a warning — hence --allow-write. Exit code 0 if all
 // three checks pass, 1 otherwise.
 // ==========================================
@@ -27,7 +31,13 @@ import { openDbReadOnly, fileExists, checkLibrary } from "../dbase/db.ts";
 interface ActionMismatchRow {
   action_id: number;
   img_id: number;
-  foto_status: string;
+  foto_status: string | null;
+}
+
+interface DuplicateActionRow {
+  img_id: number;
+  n: number;
+  action_ids: string;
 }
 
 interface FotoRow {
@@ -62,22 +72,66 @@ async function main(): Promise<void> {
   let overallPass = true;
 
   try {
-    // Check 1: every done/gone delete action's image is marked deleted.
-    console.log(`--- Check 1: done/gone delete actions have fotos.status='deleted' ---`);
+    // Row counts: context for the checks below, not a check themselves.
+    // A notes row repeating an earlier one's img_id and category is a
+    // duplicate and is counted once.
+    const counts = db.prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM fotos) AS fotos,
+         (SELECT COUNT(*) FROM fotos WHERE status = 'deleted') AS fotos_deleted,
+         (SELECT COUNT(*) FROM (SELECT DISTINCT img_id, LOWER(TRIM(category)) FROM notes)) AS notes,
+         (SELECT COUNT(DISTINCT img_id) FROM notes WHERE LOWER(TRIM(category)) = 'delete') AS notes_delete,
+         (SELECT COUNT(DISTINCT img_id) FROM notes WHERE LOWER(TRIM(category)) = 'missing') AS notes_missing,
+         (SELECT COUNT(*) FROM actions) AS actions,
+         (SELECT COUNT(*) FROM actions WHERE action = 'delete' AND status = 'pending') AS actions_pending`
+    ).get() as Record<string, number>;
+    console.log(`row counts (excluding duplicate rows in notes):`);
+    console.log(`fotos:   ${counts.fotos},  ${counts.fotos_deleted} are status='deleted'`);
+    console.log(`notes:   ${counts.notes},  category='delete': ${counts.notes_delete},  category='missing': ${counts.notes_missing}`);
+    console.log(`actions: ${counts.actions},  action='delete' and status='pending': ${counts.actions_pending}\n`);
+
+    // Check 1: done/gone delete actions and fotos.status='deleted' pair up 1 to 1.
+    console.log(`--- Check 1: done/gone delete actions and fotos.status='deleted' agree 1 to 1 ---`);
+    // LEFT JOIN so an action whose img_id has no fotos row is caught too.
     const mismatches = db.prepare(
       `SELECT a.action_id, a.img_id, f.status AS foto_status
-       FROM actions a JOIN fotos f ON f.img_id = a.img_id
-       WHERE a.action = 'delete' AND a.status IN ('done','gone') AND f.status != 'deleted'`
+       FROM actions a LEFT JOIN fotos f ON f.img_id = a.img_id
+       WHERE a.action = 'delete' AND a.status IN ('done','gone')
+         AND (f.status IS NULL OR f.status != 'deleted')
+       ORDER BY a.action_id`
     ).all() as unknown as ActionMismatchRow[];
+    const unbacked = db.prepare(
+      `SELECT f.img_id FROM fotos f
+       WHERE f.status = 'deleted' AND NOT EXISTS (
+         SELECT 1 FROM actions a
+         WHERE a.img_id = f.img_id AND a.action = 'delete' AND a.status IN ('done','gone'))
+       ORDER BY f.img_id`
+    ).all() as unknown as { img_id: number }[];
+    const duplicates = db.prepare(
+      `SELECT img_id, COUNT(*) AS n, GROUP_CONCAT(action_id) AS action_ids
+       FROM actions WHERE action = 'delete' AND status IN ('done','gone')
+       GROUP BY img_id HAVING COUNT(*) > 1 ORDER BY img_id`
+    ).all() as unknown as DuplicateActionRow[];
     const checked1 = (db.prepare(
       `SELECT COUNT(*) AS n FROM actions WHERE action = 'delete' AND status IN ('done','gone')`
     ).get() as { n: number }).n;
+    const deleted1 = (db.prepare(
+      `SELECT COUNT(*) AS n FROM fotos WHERE status = 'deleted'`
+    ).get() as { n: number }).n;
     for (const row of mismatches) {
-      console.log(`FAIL       action_id=${row.action_id} img_id=${row.img_id} — fotos.status='${row.foto_status}', expected 'deleted'`);
+      const found = row.foto_status === null ? "no fotos row" : `fotos.status='${row.foto_status}'`;
+      console.log(`FAIL       action_id=${row.action_id} img_id=${row.img_id} — ${found}, expected 'deleted'`);
     }
-    const pass1 = mismatches.length === 0;
+    for (const row of unbacked) {
+      console.log(`FAIL       img_id=${row.img_id} — fotos.status='deleted' but no done/gone delete action`);
+    }
+    for (const row of duplicates) {
+      console.log(`FAIL       img_id=${row.img_id} — ${row.n} done/gone delete actions (action_id ${row.action_ids}), expected 1`);
+    }
+    const violations1 = mismatches.length + unbacked.length + duplicates.length;
+    const pass1 = violations1 === 0;
     overallPass &&= pass1;
-    console.log(`${checked1} done/gone delete action(s) checked; ${mismatches.length} violation(s).`);
+    console.log(`${checked1} done/gone delete action(s) and ${deleted1} deleted row(s) checked; ${violations1} violation(s).`);
     console.log(pass1 ? "Check 1: PASS" : "Check 1: FAIL");
 
     // Check 2: deleted rows have no file on disk.
