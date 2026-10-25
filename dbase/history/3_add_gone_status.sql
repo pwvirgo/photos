@@ -1,4 +1,4 @@
--- dbase/history/add_gone_status.sql
+-- dbase/history/3_add_gone_status.sql
 --
 -- One-time migration: widen actions.status to allow 'gone', and backfill the
 -- 13 existing rows that recorded a file deleted outside the pipeline (by
@@ -7,11 +7,11 @@
 -- broke," not "the requested outcome already happened by other means."
 --
 -- SQLite can't ALTER a CHECK constraint in place; this is the standard
--- recreate-and-swap procedure (same shape as history/migrate.sql, but no
+-- recreate-and-swap procedure (same shape as history/1_migrate.sql, but no
 -- img_id/action_id renumbering — every row is copied through unchanged).
 --
 -- Run once against the live db:
---   sqlite3 -init /dev/null -batch $DB < dbase/history/add_gone_status.sql
+--   sqlite3 -init /dev/null -batch $DB < dbase/history/3_add_gone_status.sql
 
 BEGIN;
 

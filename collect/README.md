@@ -52,5 +52,5 @@ place.
 
 `populateDeleted.sql`, an older one-off population script, was **not**
 copied here — it moved to `dbase/history/` as archival reference alongside
-`migrate.sql`, since it's schema/data history rather than an active part of
+`1_migrate.sql`, since it's schema/data history rather than an active part of
 this pipeline.

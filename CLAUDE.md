@@ -32,7 +32,7 @@ module's own `README.md`.
 
 - **`img_id`** — `notes` and `actions` reference images only by `img_id`.
   Rebuilding the catalog changes ids and silently mispoints every row. Not
-  routine; see `dbase/history/migrate.sql` for the worked example.
+  routine; see `dbase/history/1_migrate.sql` for the worked example.
 - **`curate` is the only destructive module.** Always dry-run first; when
   testing a destructive path for real, use `--limit 1 --execute` on one row
   before trusting a full batch.

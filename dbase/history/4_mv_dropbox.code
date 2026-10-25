@@ -1,0 +1,98 @@
+2026-10-14 move images from dropbox folders to photos folder
+steps and code shown below
+
+sqlite> select count(*), substr(path, 35) as sp
+   ...> from fotos
+   ...> where path like '%Dropbox%' and status = 'ok'
+   ...> group by sp
+   ...> order by sp;
+
+
+count(*)  sp                                           status
+--------  -------------------------------------------  ------
+1         es4/Dropbox_2021_imac/Dropbox                ok    
+27        es4/Dropbox_2021_imac/Dropbox/2014           ok    
+96        es4/Dropbox_2021_imac/Dropbox/2015           ok    
+8         es4/Dropbox_2021_imac/Dropbox/2016           ok    
+4         es4/Dropbox_2021_imac/Dropbox/2017           ok    
+6         es4/Dropbox_2021_imac/Dropbox/2018           ok    
+27        es4/Dropbox_2021_imac/Dropbox/2019           ok    
+47        es4/Dropbox_2021_imac/Dropbox/2020           ok    
+1         es4/Dropbox_2021_imac/Dropbox/2020/shed      ok    
+14        es4/Dropbox_2021_imac/Dropbox/2021           ok    
+2         es4/macbook2012/Dropbox/Camera Uploads       ok    
+3         es4/macbook2012/Dropbox/Camera Uploads/2011  ok    
+1         es4/macbook2012/Dropbox/Camera Uploads/2012  ok    
+7         es4/macbook2012/Dropbox/Camera Uploads/2013  ok    
+
+Step 1: Find Name collisons
+
+SRC1="images4/Dropbox_2021_imac/Dropbox"
+SRC2="images4/macbook2012/Dropbox/Camera Uploads"   # macbook, not macbo
+
+for y in 2014 2015 2016 2017 2018 2019 2020 2021; do
+  echo "== $y"; rsync -anic --existing "$SRC1/$y/" "images4/photos/$y/"
+done
+for y in 2011 2012 2013; do
+  echo "== $y"; rsync -anic --existing "$SRC2/$y/" "images4/photos/$y/"
+done
+
+RESOLVED
+
+Step 2: Dry run (changes nothing)
+
+CMPTR="/Volumes/mac24/a/projects/photos_now/"
+SRC1="${CMPTR}images4/Dropbox_2021_imac/Dropbox"
+SRC2="${CMPTR}images4/macbook2012/Dropbox/Camera Uploads"
+DEST="${CMPTR}images4/photos"
+
+for y in 2014 2015 2016 2017 2018 2019 2020 2021; do
+  echo "== $y"; rsync -ani --ignore-existing "$SRC1/$y/" "$DEST/$y/"
+done
+
+for y in 2011 2012 2013; do
+  echo "== $y"; rsync -ani --ignore-existing "$SRC2/$y/" "$DEST/$y/"
+done
+
+The -n keeps this a dry run, so it is safe to paste as is.
+- --ignore-existing never touches a file that's already in photos.
+- 2020/shed comes along automatically, since -a recurses.
+
+DONE with code above plus moving 3 more files
+img_id NOT IN (7456, 7461, 7464);   -- not copied by rsync
+
+Count before and after to confirm nothing was lost:
+
+find "$SRC1/2014" -type f | wc -l          # source
+find images4/photos/2014 -type f | wc -l   # destination, before
+# after the copy, destination should be: before + (source - skipped duplicates)
+
+
+--  2026104 rsync copied files from dropbox folders to photos folder
+--  the following sql updated the photos4.db accordingly
+--  then the original dropbox folders were deleted
+
+BEGIN;
+
+CREATE TEMP TABLE mv AS
+SELECT img_id, path AS old_path,
+       replace(replace(path,
+         '/images4/Dropbox_2021_imac/Dropbox/',          '/images4/photos/'),
+         '/images4/macbook2012/Dropbox/Camera Uploads/', '/images4/photos/') AS new_path
+FROM fotos
+WHERE status = 'ok'
+  AND (path LIKE '%/images4/Dropbox_2021_imac/Dropbox/%'
+    OR path LIKE '%/images4/macbook2012/Dropbox/Camera Uploads/%');
+
+SELECT count(*) FROM mv;                  -- expect 238; ROLLBACK if not
+
+INSERT INTO actions (action, info, status, status_dt, img_id)
+SELECT 'mv', old_path || ' -> ' || new_path, 'done', datetime('now'), img_id
+FROM mv;
+
+UPDATE fotos
+SET path = (SELECT new_path FROM mv WHERE mv.img_id = fotos.img_id)
+WHERE img_id IN (SELECT img_id FROM mv);
+
+COMMIT;
+

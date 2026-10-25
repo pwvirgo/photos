@@ -35,24 +35,24 @@ SELECT file AS db FROM pragma_database_list WHERE name = 'main';
 BEGIN;
 
 CREATE TEMP TABLE staged AS
-SELECT s.img_id,
-       s.comments,
+SELECT n.img_id,
+       n.comments,
        f.path || '/' || f.name AS full_path,
        CASE
          WHEN f.img_id IS NULL THEN 'no fotos row'
          WHEN EXISTS (SELECT 1 FROM actions a 
-            WHERE a.img_id = s.img_id AND 
-            a.action = 'delete' AND a.status='pending')
-           THEN 'already has a delete action'
+            WHERE a.img_id = n.img_id AND 
+            a.action = 'delete' AND a.status IN ('pending','done','gone'))
+           THEN 'already has a delete action (pending/done/gone)'
        END AS skip_reason
 FROM (
   SELECT img_id,
          GROUP_CONCAT(NULLIF(TRIM(comment), ''), ' | ') AS comments
   FROM notes
-  WHERE LOWER(TRIM(category)) = 'delete'
+  WHERE LOWER(TRIM(category)) in ('delete', 'missing')
   GROUP BY img_id
-) s
-LEFT JOIN fotos f ON f.img_id = s.img_id;
+) n
+LEFT JOIN fotos f ON f.img_id = n.img_id;
 
 SELECT 'SKIPPED' AS result, img_id, skip_reason, full_path
 FROM staged WHERE skip_reason IS NOT NULL;

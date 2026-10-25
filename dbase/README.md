@@ -27,10 +27,9 @@ already is a hand-run script outside the app's code paths.
 `collect` is zsh/Python and can't import `db.ts` directly, so it keeps
 writing its own SQL/Python for schema creation and population.
 
-- **`history/`** — archived, superseded SQL, reference only. `migrate.sql`
-  (the photos2.db → photos3.db rebuild's 841-row re-match) and
-  `populateDeleted.sql` (an older one-off population script, from before
-  `collect`'s current CSV pipeline).
+- **`history/`** — one-off scripts run outside normal operations,
+  numbered in the order they were run, reference only. See
+  `history/README.md`.
 
 ## Gotcha
 

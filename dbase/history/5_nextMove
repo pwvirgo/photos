@@ -1,0 +1,56 @@
+##  plan to mv files
+##
+## Per block:  1) copy   2) dry-run the db update   3) run it with --execute
+## (back up photos4.db before step 3; delete the originals only after validate.ts passes)
+##
+## cp_to_1_folder, cp_folders are in photos/tools/folders.zsh
+## db_after_cp.zsh is in photos/dbase/history/
+
+source ~/a/projects/photos/tools/folders.zsh
+DBCP=~/a/projects/photos/dbase/history/6_db_after_cp.zsh
+
+================================
+## 2013: iPhoto masters -> photos/2013  (flat)
+SRC='/Users/mac24/a/projects/photos_now/images4/macbook2012/Pictures/iPhoto Library.migratedphotolibrary/Masters/2013/'
+DST='/Users/mac24/a/projects/photos_now/images4/photos/2013'
+
+cp_to_1_folder "$SRC" "$DST"
+$DBCP "$SRC" "$DST"             # dry run
+$DBCP --execute "$SRC" "$DST"
+================================
+## 2014: iPhoto masters -> photos/2014  (flat)
+SRC='/Users/mac24/a/projects/photos_now/images4/macbook2012/Pictures/iPhoto Library.migratedphotolibrary/Masters/2014/'
+DST='/Users/mac24/a/projects/photos_now/images4/photos/2014'
+
+cp_to_1_folder "$SRC" "$DST"
+$DBCP "$SRC" "$DST"             # dry run
+$DBCP --execute "$SRC" "$DST"
+================================
+## OneMoon drawables -> ArtPhil  (flat)
+## (bin/res/crunch/drawable-mdpi is a build copy of these; not moved)
+SRC='/Users/mac24/a/projects/photos_now/images4/macbook2012/code/android/OneMoon/res/drawable-mdpi'
+DST='/Users/mac24/a/projects/photos_now/images4/ArtPhil'
+
+cp_to_1_folder "$SRC" "$DST"
+$DBCP "$SRC" "$DST"             # dry run
+$DBCP --execute "$SRC" "$DST"
+======================================
+## one file -> photos/2012/20120828   (SRC is a file, so not cp_to_1_folder)
+SRC='/Users/mac24/a/projects/photos_now/images4/Downloads_2021_imac/EllyStephWedding.jpg'
+DST='/Users/mac24/a/projects/photos_now/images4/photos/2012/20120828'
+
+cp -np "$SRC" "$DST/"
+$DBCP "$SRC" "$DST"             # dry run
+$DBCP --execute "$SRC" "$DST"
+END OF macbook2012 other images are important but not to photo app
+=========================================
+## familyHistory -> photos/familyHistory  (keeps the subfolder structure)
+SRC='/Users/mac24/a/projects/photos_now/images4/familyHistory'
+DST='/Users/mac24/a/projects/photos_now/images4/photos/familyHistory'
+
+rsync -ani --ignore-existing "$SRC/" "$DST/"      # dry run: lists what would be copied
+rsync -ai  --ignore-existing "$SRC/" "$DST/"      # copy (-a keeps structure and times)
+$DBCP --tree "$SRC" "$DST"      # dry run
+$DBCP --tree --execute "$SRC" "$DST"
+## then rm -r "$SRC" once validate.ts passes
+===========================================

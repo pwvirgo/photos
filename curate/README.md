@@ -22,7 +22,8 @@ relative to the current directory. The commands below use:
 
 ```bash
 PARAMS=params_curate.json
-DB=<dbDir>/<dbName>       # the db named in ../params_shared.json
+DB=~/a/projects/photos_now/photos4.db
+DB=<dbDir>/<dbName>       
 ```
 
 The `.ts` scripts find the db through `../params_shared.json` themselves;
@@ -153,7 +154,7 @@ UPDATE actions SET status = 'failed', status_dt = datetime('now'),
 `notes` and `actions` identify images by `img_id` and nothing else. If the
 catalog is ever rebuilt and ids change, every row in both tables silently
 points at the wrong image. A rebuild is not routine — see
-`history/migrate.sql` for the worked example from the last one.
+`dbase/history/1_migrate.sql` for the worked example from the last one.
 
 ## Files
 
@@ -165,6 +166,5 @@ points at the wrong image. A rebuild is not routine — see
 | `executeDeletions.ts` | Execution. Moves files, writes `actions` and `fotos.status`. |
 | `params_curate.json` | This module's params (log level). The db location comes from `../params_shared.json`, the same file `slideshow` uses. |
 | `curate.log` | Append-only log in this directory, written by `findMissing.ts`, `notesToActions.sql` and `executeDeletions.ts`. |
-| `history/migrate.sql` | Archived migration SQL from an earlier db rebuild. Reference only. |
 
 Imports come from `../lib/` (`params.ts`, `logger.ts`) and `../dbase/db.ts`.

@@ -11,15 +11,20 @@
 //
 // Checks every row every time — never mutates anything, so there's no
 // blast radius to cap and no dry-run/--execute split. The db file comes
-// from params_shared.json at the project root (dbDir/dbName).
+// from params_shared.json at the project root (dbDir/dbName), found whatever
+// the current directory is. --params=<file> is REQUIRED: it names this
+// module's own params file (params_curate.json, in curate/). Without it the
+// script lists the available params files and exits 1.
 //
 // Prints row counts for fotos/notes/actions first, as context only — they
 // do not affect the result.
 //
-// Reports to stdout.The only file it may write is curate.log, and only if
+// Reports to stdout. The only file it may write is curate.log, and only if
 // loading params raises a warning — hence --allow-write. Exit code 0 if all
-// three checks pass, 1 otherwise.
+// three checks pass, 1 otherwise (also 1 if --params is missing or the image
+// library looks unavailable).
 // ==========================================
+// Run from curate/ (paths resolve from the current directory):
 //   deno run --allow-read --allow-write validate.ts --params=params_curate.json
 // ==========================================
 
@@ -126,7 +131,7 @@ async function main(): Promise<void> {
       console.log(`FAIL       img_id=${row.img_id} — fotos.status='deleted' but no done/gone delete action`);
     }
     for (const row of duplicates) {
-      console.log(`FAIL       img_id=${row.img_id} — ${row.n} done/gone delete actions (action_id ${row.action_ids}), expected 1`);
+      console.log(`FAIL       img_id=${row.img_id} — deleted once but has ${row.n} completed (done/gone) delete actions (action_id ${row.action_ids}); expected exactly 1. Probably notesToActions.sql re-staged an already-deleted image.`);
     }
     const violations1 = mismatches.length + unbacked.length + duplicates.length;
     const pass1 = violations1 === 0;
