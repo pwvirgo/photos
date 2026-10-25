@@ -23,15 +23,14 @@
 // purpose is a file-gone, not a reason to leave the action pending.
 //
 // Dry-run by default. Db file and trash folder come from params_shared.json
-// at the project root (dbDir/dbName, trashDir); --params names this module's
-// own file and is required.
+// at the project root (dbDir/dbName, trashDir); there is no --params file.
 // Prints a counts summary only; --verbose adds a line per image. Anything
 // needing attention (failure, conflict, skip) is always printed. Everything
 // printed is also appended to curate.log (relative to the current directory,
 // so run from curate/), same log the notesToActions.sql run writes to.
-//   deno run --allow-read --allow-write executeDeletions.ts --params=<file> [--execute] [--limit N] [--verbose]
+//   deno run --allow-read --allow-write executeDeletions.ts [--execute] [--limit N] [--verbose]
 
-import { loadParams, paramsPathFromArgs, noParamsFileMessage, ParamsError, dbFile } from "../lib/params.ts";
+import { loadParams, ParamsError, dbFile } from "../lib/params.ts";
 import { openDb, fileExists, checkLibrary } from "../dbase/db.ts";
 import { logger } from "../lib/logger.ts";
 
@@ -77,26 +76,20 @@ async function main(): Promise<void> {
   const limit = argValue("--limit") ? Number(argValue("--limit")) : Infinity;
   if (!(limit > 0)) throw new Error("--limit must be a positive number");
 
-  const paramsFile = paramsPathFromArgs();
-  if (!paramsFile) {
-    say(`ABORT — ${noParamsFileMessage()}`);
-    logger.error(`executeDeletions: no params file given`);
-    Deno.exit(1);
-  }
-  const params = await loadParams(paramsFile);
+  const params = await loadParams();
   logger.setLogLevel(params.logLevel);
   const dbPath = dbFile(params);
   const trashDir = params.trashDir.replace(/\/+$/, "");
 
   say("");
   say(`=== ${SCRIPT} — ${execute ? "EXECUTING" : "DRY RUN"} ===`);
-  say(`run_at ${new Date().toLocaleString()}   params ${paramsFile}`);
+  say(`run_at ${new Date().toLocaleString()}`);
   say(`db ${dbPath}   trash ${trashDir}\n`);
 
   const db = openDb(dbPath);
 
   // Library guard, checked once for the whole run — the same guard
-  // curate/findMissing.ts uses. This replaces a per-image check of each row's
+  // curate/validate.ts uses. This replaces a per-image check of each row's
   // own folder: that could not tell a disconnected volume from a folder the
   // owner deliberately deleted, so it skipped the latter and left its action
   // pending forever, which in turn blocked notesToActions.sql from ever

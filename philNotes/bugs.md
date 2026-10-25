@@ -18,9 +18,9 @@ There should be a way for the user to jump to any image.  This is possible now b
 
 
 
-- renaming the folder that holds the images (or the db) silently breaks every `fotos.path` — nothing errors, `curate/findMissing.ts` just starts reporting every image as missing.
+- renaming the folder that holds the images (or the db) silently breaks every `fotos.path` — nothing errors, `curate/validate.ts` just starts reporting every image as missing.
 
-The one-time fix is `UPDATE fotos SET path = replace(path, '<old>', '<new>')`, verify `still_old = 0`, then re-run `findMissing.ts` as a dry run to confirm 0 changes. Same situation applies when porting to another machine. Worth building a guard or a helper for this rather than relying on remembering the fix.
+The one-time fix is `UPDATE fotos SET path = replace(path, '<old>', '<new>')`, verify `still_old = 0`, then re-run `validate.ts` (no `--execute`) to confirm 0 changes. Same situation applies when porting to another machine. Worth building a guard or a helper for this rather than relying on remembering the fix.
 
 -  slideshow uses params imageFolderPath to display it in the control panel - but for no other reason
 

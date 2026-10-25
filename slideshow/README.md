@@ -26,7 +26,7 @@ decision.
   shared code from `../lib/` (`params.ts`, `logger.ts`) and database access
   from `../dbase/db.ts`.
 - **`static/`** — frontend: `slides.html`/`app.js` (the viewer), `params.html`/
-  `params.js` (the settings page), `styles.css`.
+  `params.js` (the params page), `styles.css`.
 - **`params_slideshow.json`** — this module's params file (query,
   timing, log level). The database location is shared by every module and
   lives in `../params_shared.json`; image locations come from `fotos.path`.

@@ -1,7 +1,9 @@
 // app.js — Slideshow viewer
 // Responsibilities: fetch image list, display images, handle slideshow
 // controls (pause, resume, next, prev, menu).
-// Menu shows a Notes button to annotate images; data saved to the notes table.
+// N opens a notes form to annotate images; data saved to the notes table.
+// G jumps to an image number; T sets display time for this run; P opens the
+// params page.
 
 (function app() {
   // DOM elements
@@ -10,10 +12,7 @@
   var loadingEl = document.getElementById('loading');
   var pauseIndicator = document.getElementById('pause-indicator');
   var menuOverlay = document.getElementById('menu-overlay');
-  var notesBtn = document.getElementById('notes-btn');
-  var resumeBtn = document.getElementById('resume-btn');
   var imageCounter = document.getElementById('image-counter');
-  var paramsLink = document.getElementById('params-link');
   var actionIndicator = document.getElementById('action-indicator');
   var infoOverlay = document.getElementById('info-overlay');
 
@@ -47,7 +46,7 @@
   var isMenuOpen = false;
   var currentForm = null; // 'notes' or null
   var hasImageError = false;
-  var isErrorState = false; // true on startup error; Escape → Control Panel
+  var isErrorState = false; // true on startup error; Escape → Params page
   var timer = null;
   var currentFotoId = null;
   var currentFilename = '';
@@ -60,6 +59,11 @@
   var currentMd5 = '';
   var currentDuration = '';
   var isInfoVisible = false;
+
+  // Params page URL; carries this run's display time and image index
+  function paramsUrl() {
+    return '/params?displayTimeMs=' + displayTimeMs + '&index=' + currentIndex;
+  }
 
   // Show a brief toast for action feedback
   function showActionToast(message) {
@@ -180,6 +184,12 @@
       notesMsg.className = 'action-status error';
       return;
     }
+    if (notesCategory.value.trim() === '') {
+      notesMsg.textContent = 'Category is required';
+      notesMsg.className = 'action-status error';
+      notesCategory.focus();
+      return;
+    }
     try {
       var rankVal = notesRank.value !== '' ? parseInt(notesRank.value) : null;
       var response = await fetch('/api/notes', {
@@ -247,17 +257,6 @@
     isDragging = false;
   });
 
-  // Notes button in menu
-  notesBtn.addEventListener('click', function () {
-    openNotesForm();
-  });
-
-  // Menu resume button
-  resumeBtn.addEventListener('click', function () {
-    closeMenu();
-    resume();
-  });
-
   // Display an image by index. In DB mode, checks missing-on-disk status
   // (via fetchImageInfo) before loading the file — a known-missing image is
   // shown as a brief message and skipped, rather than attempted and left to
@@ -288,7 +287,6 @@
     currentImage.src = '/images/' + images[index];
 
     imageCounter.textContent = (index + 1) + ' / ' + images.length;
-    paramsLink.href = '/params?displayTimeMs=' + displayTimeMs + '&index=' + index;
 
     var nextIndex = (index + 1) % images.length;
     preloadImage.src = '/images/' + images[nextIndex];
@@ -347,6 +345,37 @@
     showImage((currentIndex + 1) % images.length);
   }
 
+  // Ask for an image number (as shown in the counter, 1-based) and jump to it.
+  // Pauses while the prompt is open; resumes afterward unless already paused.
+  function goToImage() {
+    var wasPaused = isPaused;
+    pause();
+    var answer = window.prompt('Go to image number (1–' + images.length + '):', currentIndex + 1);
+    var n = answer === null ? NaN : parseInt(answer, 10);
+    if (!wasPaused) resume();
+    if (n >= 1 && n <= images.length) {
+      showImage(n - 1);
+    } else if (answer !== null) {
+      showActionToast('Enter a number from 1 to ' + images.length);
+    }
+  }
+
+  // Ask for a display time (ms) for the current run only; the params file is
+  // not changed (edit it on the Params page).
+  function setDisplayTime() {
+    var wasPaused = isPaused;
+    pause();
+    var answer = window.prompt('Display time (ms), this run only:', displayTimeMs);
+    var ms = answer === null ? NaN : parseInt(answer, 10);
+    if (ms >= 100) {
+      displayTimeMs = ms;
+      showActionToast('Display time ' + ms + ' ms');
+    } else if (answer !== null) {
+      showActionToast('Enter a number of 100 or more');
+    }
+    if (!wasPaused) resume();
+  }
+
   function pause() {
     if (!isPaused) {
       isPaused = true;
@@ -377,11 +406,6 @@
     menuOverlay.classList.add('visible');
     clearTimeout(timer);
     pause();
-    // Auto-focus first item for keyboard navigation
-    setTimeout(function () {
-      var items = getMenuFocusable();
-      if (items.length > 0) items[0].focus();
-    }, 0);
   }
 
   function closeMenu() {
@@ -396,29 +420,6 @@
     } else {
       openMenu();
     }
-  }
-
-  // Menu keyboard navigation
-  function getMenuFocusable() {
-    var items = [];
-    if (notesBtn && !notesBtn.hidden) items.push(notesBtn);
-    if (resumeBtn) items.push(resumeBtn);
-    if (paramsLink) items.push(paramsLink);
-    return items;
-  }
-
-  function focusMenuNext() {
-    var items = getMenuFocusable();
-    if (items.length === 0) return;
-    var idx = items.indexOf(document.activeElement);
-    items[(idx + 1) % items.length].focus();
-  }
-
-  function focusMenuPrev() {
-    var items = getMenuFocusable();
-    if (items.length === 0) return;
-    var idx = items.indexOf(document.activeElement);
-    items[(idx - 1 + items.length) % items.length].focus();
   }
 
   // Show error message (styled by .error-* classes in styles.css)
@@ -486,7 +487,7 @@
       return;
     }
 
-    // Error state: Esc → Control Panel; Space → retry if image load error
+    // Error state: Esc → Params page; Space → retry if image load error
     if (isErrorState) {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -529,35 +530,37 @@
 
     // Menu is open
     if (isMenuOpen) {
-      var menuItems = getMenuFocusable();
-      var focused = document.activeElement;
       switch (e.key) {
-        case 'Tab':
-          e.preventDefault();
-          if (e.shiftKey) { focusMenuPrev(); } else { focusMenuNext(); }
-          break;
-        case 'ArrowDown':
-        case 'ArrowRight':
-          e.preventDefault();
-          focusMenuNext();
-          break;
-        case 'ArrowUp':
-        case 'ArrowLeft':
-          e.preventDefault();
-          focusMenuPrev();
-          break;
         case ' ':
           e.preventDefault();
-          if (menuItems.indexOf(focused) !== -1) {
-            focused.click();
-          } else {
-            closeMenu();
-            resume();
-          }
+          closeMenu();
+          resume();
           break;
         case 'Escape':
           e.preventDefault();
           closeMenu();
+          break;
+        case 'n':
+        case 'N':
+          e.preventDefault();
+          openNotesForm();
+          break;
+        case 'g':
+        case 'G':
+          e.preventDefault();
+          closeMenu();
+          goToImage();
+          break;
+        case 't':
+        case 'T':
+          e.preventDefault();
+          closeMenu();
+          setDisplayTime();
+          break;
+        case 'p':
+        case 'P':
+          e.preventDefault();
+          window.location.href = paramsUrl();
           break;
       }
       return;
@@ -595,6 +598,21 @@
         e.preventDefault();
         openNotesForm();
         break;
+      case 'g':
+      case 'G':
+        e.preventDefault();
+        goToImage();
+        break;
+      case 't':
+      case 'T':
+        e.preventDefault();
+        setDisplayTime();
+        break;
+      case 'p':
+      case 'P':
+        e.preventDefault();
+        window.location.href = paramsUrl();
+        break;
     }
   });
 
@@ -603,10 +621,6 @@
     try {
       var data = await fetchImages();
       images = data.images;
-
-      if (notesBtn) {
-        notesBtn.hidden = false;
-      }
 
       if (!urlParams.has('displayTimeMs')) {
         displayTimeMs = data.displayTimeMs;
@@ -621,7 +635,7 @@
 
       if (images.length === 0) {
         isErrorState = true;
-        showError('No images found', 'Check the settings in ' + (data.paramsFile || 'your params file') + ' and restart the server. Press Esc to open Control Panel.');
+        showError('No images found', 'Check the settings in ' + (data.paramsFile || 'your params file') + ' and restart the server. Press Esc to open Params page.');
         return;
       }
 
@@ -634,7 +648,7 @@
     } catch (error) {
       console.error('Failed to fetch images:', error);
       isErrorState = true;
-      showError('Failed to load images', 'Check that the server is running. Press Esc to open Control Panel.');
+      showError('Failed to load images', 'Check that the server is running. Press Esc to open Params page.');
     }
   }
 

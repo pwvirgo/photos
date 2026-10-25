@@ -124,7 +124,7 @@ export interface QueryResult {
 // Queries the fotos table only — does not touch the filesystem or mutate
 // catalog state. Missing-file detection is lazy, per image, when it's actually
 // requested for display (slideshow.ts /api/imageInfo), or in bulk via
-// recon/findMissing.ts — never here. See docs/reconcile.md.
+// curate/validate.ts --execute — never here. See docs/reconcile.md.
 //
 // Takes the db *path*, not a handle, and opens its own read-only connection for
 // the duration of the query: the whereClause/orderBy fragments come from
@@ -217,7 +217,7 @@ export function insertAction(db: DatabaseSync, imgId: number, action: string, pa
 export function insertNote(
   db: DatabaseSync,
   imgId: number,
-  category: string | null,
+  category: string,
   rank: number | null,
   comment: string | null,
 ): void {
@@ -225,7 +225,7 @@ export function insertNote(
     "INSERT INTO notes (category, rank, comment, img_id) VALUES (?, ?, ?, ?)"
   );
   stmt.run(category, rank, comment, imgId);
-  logger.info(`Note saved, img_id=${imgId}, category=${category ?? ""}, rank=${rank ?? ""}`);
+  logger.info(`Note saved, img_id=${imgId}, category=${category},rank=${rank ?? ""}`);
 }
 
 // True if a 'missing' note already exists for this image — used so a
@@ -242,7 +242,7 @@ export function hasMissingNote(db: DatabaseSync, imgId: number): boolean {
 // how many notes were removed. A 'missing' note is a cached observation, not
 // testimony: it is re-derivable by re-scanning, so leaving a stale one in place
 // is worse than dropping it. The history lives in recon/recon.log, which
-// records every insert and delete. Used by recon/findMissing.ts.
+// records every insert and delete. Used by curate/validate.ts --execute.
 //
 // Deletes the note whatever comment it carries — deliberate, so a scan never
 // has to decide whether a comment makes a stale flag worth keeping.

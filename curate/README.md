@@ -21,16 +21,16 @@ Run everything from **this directory**: the scripts write `curate.log`
 relative to the current directory. The commands below use:
 
 ```bash
-PARAMS=params_curate.json
 DB=~/a/projects/photos_now/photos4.db
 DB=<dbDir>/<dbName>       
 ```
 
-The `.ts` scripts find the db through `../params_shared.json` themselves;
+The `.ts` scripts take no `--params` file; they find the db through
+`../params_shared.json` themselves;
 `$DB` is only for the `sqlite3` commands, so keep the two pointing at the
 same file.
 
-`findMissing.ts` and `executeDeletions.ts` default to a dry run — nothing
+`validate.ts` (for its note changes) and `executeDeletions.ts` default to a dry run — nothing
 changes until `--execute`. Both take `--verbose` (a line per image) and
 `--limit N`.
 
@@ -51,7 +51,7 @@ insert the row from the terminal. The note's `comment` is carried into
 
 **Files deleted by hand** (outside this pipeline) take a variation. Such a
 file is flagged with a note of `category='missing'` — written by `slideshow`
-when it tries to show the image, or in bulk by `findMissing.ts` (step 2).
+when it tries to show the image, or in bulk by `validate.ts --execute` (step 2).
 A `missing` note is a flag for a person, not an instruction: staging ignores
 it, and nothing turns it into an action automatically. To record the
 deletion, promote the note to `delete` yourself:
@@ -75,24 +75,25 @@ changes nothing:
 3. every live row has a file on disk
 
 ```bash
-deno run --allow-read --allow-write validate.ts --params=$PARAMS
+deno run --allow-read --allow-write validate.ts
 ```
 
-Exit code 0 if all three pass, 1 otherwise. (`--allow-write` is only so a
-params warning can reach `curate.log`.)
+Exit code 0 if all three pass, 1 otherwise.
 
-`findMissing.ts` keeps the `missing` notes in sync with the disk: it adds a
-note (`category='missing'`) for each live row whose file has vanished, and
-removes the note if the file comes back. It writes only `notes`. Review what
-it flags and decide (step 1) whether any should become deletions.
+After the checks it reports on the `missing` notes: which `status='ok'` rows
+would get a note (`category='missing'`, file has vanished) and which notes
+would be removed (file is back). By default nothing is changed. `--execute`
+applies those note changes. It writes only `notes`, and never changes the
+PASS/FAIL result or exit code — Check 3 still reports a flagged file, marked
+`(flagged)`. `--limit N` caps how many note changes `--execute` applies (the
+checks are never capped; `--limit` is an error without `--execute`) and
+`--verbose` adds a line per change. Review what it flags and decide (step 1)
+whether any should become deletions.
 
 ```bash
-deno run --allow-read --allow-write findMissing.ts --params=$PARAMS
-deno run --allow-read --allow-write findMissing.ts --params=$PARAMS --execute
+deno run --allow-read --allow-write validate.ts
+deno run --allow-read --allow-write validate.ts --execute
 ```
-
-These two overlap (validate's check 3 and findMissing look for the same
-missing files) and might be consolidated.
 
 ### 3. Stage the actions
 
@@ -122,9 +123,9 @@ marked `deleted` and the action becomes `gone`. `trashDir` comes from
 Dry run, then one image, then the rest:
 
 ```bash
-deno run --allow-read --allow-write executeDeletions.ts --params=$PARAMS
-deno run --allow-read --allow-write executeDeletions.ts --params=$PARAMS --execute --limit 1
-deno run --allow-read --allow-write executeDeletions.ts --params=$PARAMS --execute
+deno run --allow-read --allow-write executeDeletions.ts
+deno run --allow-read --allow-write executeDeletions.ts --execute --limit 1
+deno run --allow-read --allow-write executeDeletions.ts --execute
 ```
 
 Emptying the trash is a separate, manual step.
@@ -160,11 +161,9 @@ points at the wrong image. A rebuild is not routine — see
 
 | File | Role |
 |------|------|
-| `validate.ts` | Read-only audit: done/gone deletes vs. `fotos.status` (1 to 1, both directions), deleted rows vs. files on disk, live rows vs. files on disk. |
-| `findMissing.ts` | Bulk missing-file scan. Writes only `notes`. |
+| `validate.ts` | Audit (read-only unless `--execute`): done/gone deletes vs. `fotos.status` (1 to 1, both directions), deleted rows vs. files on disk, live rows vs. files on disk. `--execute` also keeps the `missing` notes in step with the disk (writes only `notes`). |
 | `notesToActions.sql` | Staging. `notes` → pending `actions`. |
 | `executeDeletions.ts` | Execution. Moves files, writes `actions` and `fotos.status`. |
-| `params_curate.json` | This module's params (log level). The db location comes from `../params_shared.json`, the same file `slideshow` uses. |
-| `curate.log` | Append-only log in this directory, written by `findMissing.ts`, `notesToActions.sql` and `executeDeletions.ts`. |
+| `curate.log` | Append-only log in this directory, written by `validate.ts`, `notesToActions.sql` and `executeDeletions.ts`. |
 
 Imports come from `../lib/` (`params.ts`, `logger.ts`) and `../dbase/db.ts`.

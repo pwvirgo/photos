@@ -97,11 +97,13 @@ function loadDbImages(params: Params): DbLoadResult {
   }
 }
 
+const VALID_LOG_LEVELS: LogLevel[] = ["DEBUG", "INFO", "WARN", "ERROR"];
+
 async function main(): Promise<void> {
   logger.info("Starting slideshow server...");
 
   // The file this run is bound to. Everything that reads or writes params
-  // uses this one path, so saving from the Control Panel cannot land in the
+  // uses this one path, so saving from the Params page cannot land in the
   // other mode's file.
   const paramsFile = paramsPathFromArgs();
   if (!paramsFile) {
@@ -168,7 +170,7 @@ async function main(): Promise<void> {
         orderBy: params.orderBy,
         displayTimeMs: params.displayTimeMs,
         maxFiles: params.maxFiles,
-        logLevel: logger.getLogLevel(),
+        logLevel: params.logLevel,
       });
     }
 
@@ -185,6 +187,13 @@ async function main(): Promise<void> {
         if (body.whereClause !== undefined) current.whereClause = body.whereClause;
         if (body.orderBy !== undefined) current.orderBy = body.orderBy;
         if (body.maxFiles !== undefined) current.maxFiles = body.maxFiles;
+        if (body.displayTimeMs !== undefined) current.displayTimeMs = body.displayTimeMs;
+        if (body.logLevel !== undefined) {
+          if (!VALID_LOG_LEVELS.includes(body.logLevel)) {
+            return jsonResponse({ error: "Invalid log level" }, 400);
+          }
+          current.logLevel = body.logLevel;
+        }
 
         await Deno.writeTextFile(paramsFile, JSON.stringify(current, null, 2) + "\n");
         logger.info(`Params saved to ${paramsFile}`);
@@ -192,23 +201,6 @@ async function main(): Promise<void> {
       } catch (error) {
         logger.error(`Failed to save params: ${error}`);
         return jsonResponse({ error: "Failed to save params" }, 500);
-      }
-    }
-
-    // Route: POST /api/logLevel - Change log level at runtime
-    if (pathname === "/api/logLevel" && request.method === "POST") {
-      const VALID_LEVELS: LogLevel[] = ["DEBUG", "INFO", "WARN", "ERROR"];
-      try {
-        const body = await request.json();
-        const level = body.logLevel as LogLevel;
-        if (!VALID_LEVELS.includes(level)) {
-          return jsonResponse({ error: "Invalid log level" }, 400);
-        }
-        logger.setLogLevel(level);
-        logger.info(`Log level changed to ${level}`);
-        return jsonResponse({ logLevel: level });
-      } catch {
-        return jsonResponse({ error: "Invalid request body" }, 400);
       }
     }
 
@@ -332,7 +324,10 @@ async function main(): Promise<void> {
         if (typeof fotoId !== "number") {
           return jsonResponse({ error: "fotoId (number) required" }, 400);
         }
-        insertNote(db, fotoId, category || null, typeof rank === "number" ? rank : null, comment || null);
+        if (typeof category !== "string" || category.trim() === "") {
+          return jsonResponse({ error: "Category is required" }, 400);
+        }
+        insertNote(db, fotoId, category.trim(), typeof rank === "number" ? rank : null, comment || null);
         return jsonResponse({ ok: true });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

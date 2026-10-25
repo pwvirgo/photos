@@ -3,16 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Control Panel</title>
+  <title>Params</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body class="settings">
   <div class="container">
-    <h1>Control Panel</h1>
+    <h1>Params</h1>
 
     <input type="hidden" id="index" value="0">
 
-    <!-- Immediate effect fields -->
+    <p class="divider-text">Edits change the params file only, and take effect after a server restart. (Press T in the slideshow to change display time for the current run.)</p>
+
     <div class="row">
       <div class="field">
         <label for="displayTimeMs">Display time (ms)</label>
@@ -28,9 +29,6 @@
         </select>
       </div>
     </div>
-
-    <!-- Divider -->
-    <p class="divider-text">The following will take effect only after Saving and server re-boot</p>
 
     <!-- Which params file this server was started with. Read-only: you
          choose it with --params=<file> at startup, not here. -->
@@ -82,8 +80,20 @@
     <div id="status" class="status"></div>
 
     <div class="button-row">
-      <button type="button" id="save-btn" class="btn btn-secondary">Save</button>
-      <button type="button" id="resume-btn" class="btn btn-primary">Resume</button>
+      <button type="button" id="exit-btn" class="btn btn-primary" autofocus>Exit</button>
+    </div>
+  </div>
+
+  <!-- Shown by Exit when where clause / order by / max files were changed -->
+  <div id="save-prompt" class="overlay" role="dialog" aria-modal="true" aria-labelledby="save-prompt-heading">
+    <div class="panel">
+      <h2 id="save-prompt-heading">Save changes?</h2>
+      <p>You changed params. They take effect after a server restart.</p>
+      <div class="button-row">
+        <button type="button" id="save-exit-btn" class="btn btn-primary">Save &amp; Exit</button>
+        <button type="button" id="discard-exit-btn" class="btn btn-secondary">Discard &amp; Exit</button>
+        <button type="button" id="cancel-btn" class="btn btn-secondary">Cancel</button>
+      </div>
     </div>
   </div>
 

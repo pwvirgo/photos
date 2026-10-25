@@ -10,7 +10,7 @@ const LEVEL_ORDER: Record<LogLevel, number> = {
 let currentLevel: LogLevel = "INFO";
 
 // The log is named after the module being run — the folder holding the
-// entry-point script: curate/findMissing.ts -> curate.log, slideshow/
+// entry-point script: curate/validate.ts -> curate.log, slideshow/
 // slideshow.ts -> slideshow.log. Nobody sets it, so nobody can get it wrong;
 // a fixed name here once sent curate's log lines into slideshow.log. Written
 // to the current directory, per the run-from-your-module's-folder rule.

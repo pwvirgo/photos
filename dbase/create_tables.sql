@@ -19,7 +19,7 @@ CREATE TABLE fotos (
 
 CREATE TABLE notes (
     note_id     INTEGER PRIMARY KEY AUTOINCREMENT,
-    category    TEXT,
+    category    TEXT NOT NULL CHECK(TRIM(category) <> ''),
     rank        INTEGER CHECK(rank IN (1,2,3,4,5)),
     comment     TEXT,
     img_id      INTEGER,

@@ -11,7 +11,7 @@ an oversight.
 - **`params.ts`** — loads and validates params: the shared
   `params_shared.json` at the project root (`dbDir`, `dbName`, `trashDir` —
   the same for every module) merged with the module's own file named by
-  `--params`. `Params`, `ParamsError`, `SHARED_PARAMS_FILE`; `loadParams()`,
+  `--params` (optional; the curate scripts pass none and use defaults). `Params`, `ParamsError`, `SHARED_PARAMS_FILE`; `loadParams()`,
   `paramsPathFromArgs()`, `noParamsFileMessage()`, `dbFile()` (builds the db
   path from `dbDir` + `dbName`).
 

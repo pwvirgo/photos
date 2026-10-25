@@ -51,7 +51,7 @@ body.settings {
 }
 
 /* The hidden attribute is the one source of truth for visibility --
-   it must beat component rules like .menu-btn-group .btn */
+   it must beat component rules like .btn */
 [hidden] {
   display: none !important;
 }
@@ -317,15 +317,9 @@ kbd {
 }
 
 /* Menu button group */
-.menu-btn-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.menu-btn-group .btn {
-  width: 100%;
+.keylist-gap {
+  grid-column: 1 / -1;
+  height: 8px;
 }
 
 /* Label / value list (Notes form header) */
@@ -404,27 +398,6 @@ kbd {
 textarea.input {
   resize: vertical;
   min-height: 60px;
-}
-
-/* Menu keyboard focus highlight */
-.menu-btn-group .btn:focus,
-.menu-link a:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-
-/* Menu overlay */
-.menu-link {
-  margin-top: 15px;
-}
-
-.menu-link a {
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.menu-link a:hover {
-  text-decoration: underline;
 }
 
 /* ===========================================

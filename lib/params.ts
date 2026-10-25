@@ -58,9 +58,11 @@ async function readJson(path: string): Promise<Record<string, unknown>> {
   }
 }
 
-export async function loadParams(paramsPath: string): Promise<Params> {
+// With no paramsPath (the curate and collect scripts) only the shared file is
+// read and every module setting takes its default.
+export async function loadParams(paramsPath?: string): Promise<Params> {
   const shared = await readJson(SHARED_PARAMS_FILE);
-  const parsed = await readJson(paramsPath);
+  const parsed = paramsPath ? await readJson(paramsPath) : {};
   try {
     if (shared.dataDir !== undefined) {
       throw new Error(`"dataDir" was renamed to "dbDir" — rename it in ${SHARED_PARAMS_FILE}`);
