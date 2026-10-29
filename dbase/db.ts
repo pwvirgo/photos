@@ -47,15 +47,14 @@ function checkSqlFragment(clause: string, label: string): void {
 export function openDb(dbPath: string): DatabaseSync {
   if (!fileExists(dbPath)) throw new Error(`Database not found: ${dbPath}`);
   const db = new DatabaseSync(dbPath);
-  // node:sqlite enforces foreign keys by default (unlike the sqlite3 CLI, which
-  // is off by default). notes/actions keep img_id referencing fotos rows as an
-  // audit trail that must outlive the photo. Under the current approach
-  // (fotos.status='deleted') the row stays put, so nothing is orphaned today —
-  // `PRAGMA foreign_key_check` is clean. It is kept off for what comes next: a
-  // purge of status='deleted' rows would otherwise be blocked by, or cascade away,
-  // that audit trail. (An older scheme moved rows to a `deleted` table, which
-  // orphaned notes outright; that table is gone.)
-  db.exec("PRAGMA foreign_keys = OFF;");
+  // Foreign keys are enforced per connection, so switch them on explicitly
+  // rather than rely on the driver default (the sqlite3 CLI defaults to off).
+  // notes/actions/prov reference fotos(img_id). Under the current approach
+  // (fotos.status='deleted') the fotos row stays put, so nothing is orphaned —
+  // `PRAGMA foreign_key_check` is clean. Consequence: hard-deleting a fotos
+  // row that still has notes/actions/prov rows is refused, so a future purge of
+  // status='deleted' rows must deal with those rows first.
+  db.exec("PRAGMA foreign_keys = ON;");
   logger.info(`Opened database: ${dbPath}`);
   return db;
 }
@@ -226,6 +225,88 @@ export function insertNote(
   );
   stmt.run(category, rank, comment, imgId);
   logger.info(`Note saved, img_id=${imgId}, category=${category},rank=${rank ?? ""}`);
+}
+
+export const PROV_TEXT_FIELDS = [
+  "place", "event_time", "subjects", "source", "shooter", "comment",
+] as const;
+export const PROV_RANK_FIELDS = ["photo_rank", "event_rank"] as const;
+
+export interface ProvRow {
+  img_id: number;
+  place: string | null;
+  event_time: string | null;
+  subjects: string | null;
+  source: string | null;
+  shooter: string | null;
+  photo_rank: number | null;
+  event_rank: number | null;
+  comment: string | null;
+}
+
+export function getProv(db: DatabaseSync, imgId: number): ProvRow | null {
+  const row = db.prepare("SELECT * FROM prov WHERE img_id = ?").get(imgId);
+  return (row as unknown as ProvRow | undefined) ?? null;
+}
+
+// Saves the prov row for an image: insert or replace. Rules live here, not in
+// the schema, so they can change without rebuilding the table:
+//   - text is trimmed and blank becomes NULL
+//   - a rank must be NULL or an integer 1-5 (the table has a CHECK as well;
+//     this gives the caller a readable message instead of SQLite's)
+//   - a row with every field NULL is not stored (and any existing row is
+//     deleted) — "at least one non-id column"
+// Returns "saved" or "deleted" ("deleted" also when there was nothing to
+// delete). Throws Error with a user-readable message on a bad rank.
+export function saveProv(
+  db: DatabaseSync,
+  imgId: number,
+  fields: Record<string, unknown>,
+): "saved" | "deleted" {
+  const text: Record<string, string | null> = {};
+  for (const f of PROV_TEXT_FIELDS) {
+    const v = fields[f];
+    const t = typeof v === "string" ? v.trim() : "";
+    text[f] = t === "" ? null : t;
+  }
+  const rank: Record<string, number | null> = {};
+  for (const f of PROV_RANK_FIELDS) {
+    const v = fields[f];
+    if (v === null || v === undefined || v === "") {
+      rank[f] = null;
+    } else if (typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 5) {
+      rank[f] = v;
+    } else {
+      throw new Error(`${f} must be a whole number from 1 to 5, or blank`);
+    }
+  }
+
+  const allNull = Object.values(text).every((v) => v === null) &&
+    Object.values(rank).every((v) => v === null);
+  if (allNull) {
+    deleteProv(db, imgId);
+    return "deleted";
+  }
+
+  db.prepare(
+    `INSERT OR REPLACE INTO prov
+       (img_id, place, event_time, subjects, source, shooter,
+        photo_rank, event_rank, comment)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    imgId, text.place, text.event_time, text.subjects, text.source,
+    text.shooter, rank.photo_rank, rank.event_rank, text.comment,
+  );
+  logger.info(`Prov saved, img_id=${imgId}`);
+  return "saved";
+}
+
+export function deleteProv(db: DatabaseSync, imgId: number): number {
+  const deleted = Number(
+    db.prepare("DELETE FROM prov WHERE img_id = ?").run(imgId).changes,
+  );
+  if (deleted > 0) logger.info(`Prov deleted, img_id=${imgId}`);
+  return deleted;
 }
 
 // True if a 'missing' note already exists for this image — used so a

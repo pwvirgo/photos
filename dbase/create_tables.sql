@@ -27,6 +27,20 @@ CREATE TABLE notes (
     FOREIGN KEY (img_id) REFERENCES fotos(img_id)
 );
 
+-- Facts about an image (replaces notes). One row per image. Text columns are
+-- NULL when blank; "at least one non-id column" is enforced in slideshow code.
+CREATE TABLE prov (
+    img_id      INTEGER PRIMARY KEY REFERENCES fotos(img_id),
+    place       TEXT,
+    event_time  TEXT,
+    subjects    TEXT,
+    source      TEXT,
+    shooter     TEXT,
+    photo_rank  INTEGER CHECK(photo_rank BETWEEN 1 AND 5),
+    event_rank  INTEGER CHECK(event_rank BETWEEN 1 AND 5),
+    comment     TEXT
+);
+
 -- action/status use CHECK for now as a fixed vocabulary; may become lookup
 -- tables later if the set of values needs to grow without editing this schema.
 CREATE TABLE actions (

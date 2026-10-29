@@ -34,6 +34,7 @@
         <dt><kbd>G</kbd></dt><dd>Go to image number</dd>
         <dt><kbd>I</kbd></dt><dd>Toggle image info</dd>
         <dt><kbd>N</kbd></dt><dd>Open Notes</dd>
+        <dt><kbd>E</kbd></dt><dd>Edit provenance (place, when, who&hellip;)</dd>
         <dt><kbd>T</kbd></dt><dd>Set display time (this run)</dd>
         <dt><kbd>P</kbd></dt><dd>Params</dd>
       </dl>
@@ -72,6 +73,62 @@
       <div class="form-buttons">
         <button type="button" id="notes-cancel-btn" class="btn btn-secondary">Cancel</button>
         <button type="button" id="notes-submit-btn" class="btn btn-primary">Save Note</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Provenance form: create/edit/delete the prov row for the current image -->
+  <div id="prov-overlay" class="overlay overlay-clear" role="dialog" aria-modal="true" aria-labelledby="prov-heading">
+    <div class="panel notes-form">
+      <h2 id="prov-heading">Provenance</h2>
+      <dl class="form-info">
+        <dt>Filename</dt><dd id="prov-filename"></dd>
+        <dt>IMG_ID</dt><dd id="prov-img-id"></dd>
+        <dt>Date taken</dt><dd id="prov-date-taken"></dd>
+      </dl>
+      <div class="row">
+        <div class="field">
+          <label for="prov-place">Place</label>
+          <input type="text" id="prov-place" class="input">
+        </div>
+        <div class="field">
+          <label for="prov-event-time">When</label>
+          <input type="text" id="prov-event-time" class="input" placeholder="1812, summer 1987, ...">
+        </div>
+      </div>
+      <div class="field">
+        <label for="prov-subjects">Subjects</label>
+        <input type="text" id="prov-subjects" class="input" placeholder="Pablo, Steph, new car">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="prov-source">Source</label>
+          <input type="text" id="prov-source" class="input" placeholder="scanner, camera, web scrape">
+        </div>
+        <div class="field">
+          <label for="prov-shooter">Shooter</label>
+          <input type="text" id="prov-shooter" class="input">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="prov-photo-rank">Photo rank (1&ndash;5)</label>
+          <input type="number" id="prov-photo-rank" class="input" min="1" max="5">
+        </div>
+        <div class="field">
+          <label for="prov-event-rank">Event rank (1&ndash;5)</label>
+          <input type="number" id="prov-event-rank" class="input" min="1" max="5">
+        </div>
+      </div>
+      <div class="field">
+        <label for="prov-comment">Comment</label>
+        <textarea id="prov-comment" class="input" rows="4" placeholder="Enter comment..."></textarea>
+      </div>
+      <div id="prov-msg" class="action-status"></div>
+      <div class="form-buttons">
+        <button type="button" id="prov-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="prov-delete-btn" class="btn btn-secondary">Delete</button>
+        <button type="button" id="prov-submit-btn" class="btn btn-primary">Save</button>
       </div>
     </div>
   </div>

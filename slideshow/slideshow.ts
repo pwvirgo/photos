@@ -1,6 +1,6 @@
 import { logger, LogLevel } from "../lib/logger.ts";
 import { loadParams, paramsPathFromArgs, noParamsFileMessage, ParamsError, Params, dbFile, SHARED_PARAMS_FILE } from "../lib/params.ts";
-import { openDb, queryImages, insertAction, insertNote, hasMissingNote, fileExists, getImageInfo, DbImage } from "../dbase/db.ts";
+import { openDb, queryImages, insertAction, insertNote, hasMissingNote, fileExists, getImageInfo, getProv, saveProv, deleteProv, DbImage } from "../dbase/db.ts";
 import { DatabaseSync } from "node:sqlite";
 
 const PORT = 8000;
@@ -333,6 +333,36 @@ async function main(): Promise<void> {
         const message = err instanceof Error ? err.message : String(err);
         logger.error(`Failed to save note: ${message}`);
         return jsonResponse({ error: "Failed to save note: " + message }, 500);
+      }
+    }
+
+    // Route: /api/prov/<img_id> - GET the prov row (null if none), PUT to
+    // save it (all-blank deletes), DELETE to remove it. Rules in saveProv().
+    if (pathname.startsWith("/api/prov/")) {
+      if (!db) {
+        return jsonResponse({ error: "Database not available" }, 500);
+      }
+      const fotoId = parseInt(pathname.replace("/api/prov/", ""));
+      if (isNaN(fotoId)) {
+        return jsonResponse({ error: "Invalid img_id" }, 400);
+      }
+      try {
+        if (request.method === "GET") {
+          return jsonResponse({ prov: getProv(db, fotoId) });
+        }
+        if (request.method === "PUT") {
+          const body = await request.json();
+          return jsonResponse({ ok: true, result: saveProv(db, fotoId, body) });
+        }
+        if (request.method === "DELETE") {
+          deleteProv(db, fotoId);
+          return jsonResponse({ ok: true });
+        }
+        return jsonResponse({ error: "Method not allowed" }, 405);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`Prov ${request.method} failed, img_id=${fotoId}: ${message}`);
+        return jsonResponse({ error: message }, 400);
       }
     }
 

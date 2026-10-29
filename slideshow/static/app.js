@@ -2,6 +2,7 @@
 // Responsibilities: fetch image list, display images, handle slideshow
 // controls (pause, resume, next, prev, menu).
 // N opens a notes form to annotate images; data saved to the notes table.
+// E opens the provenance form (create/edit/delete the prov row for the image).
 // G jumps to an image number; T sets display time for this run; P opens the
 // params page.
 
@@ -35,6 +36,24 @@
   var notesCancelBtn = document.getElementById('notes-cancel-btn');
   var notesSubmitBtn = document.getElementById('notes-submit-btn');
 
+  // Provenance form elements
+  var provOverlay = document.getElementById('prov-overlay');
+  var provFilename = document.getElementById('prov-filename');
+  var provImgId = document.getElementById('prov-img-id');
+  var provDateTaken = document.getElementById('prov-date-taken');
+  var provMsg = document.getElementById('prov-msg');
+  var provDeleteBtn = document.getElementById('prov-delete-btn');
+  var provInputs = {
+    place: document.getElementById('prov-place'),
+    event_time: document.getElementById('prov-event-time'),
+    subjects: document.getElementById('prov-subjects'),
+    source: document.getElementById('prov-source'),
+    shooter: document.getElementById('prov-shooter'),
+    photo_rank: document.getElementById('prov-photo-rank'),
+    event_rank: document.getElementById('prov-event-rank'),
+    comment: document.getElementById('prov-comment'),
+  };
+
   // Parse URL params
   var urlParams = new URLSearchParams(window.location.search);
 
@@ -44,7 +63,8 @@
   var displayTimeMs = parseInt(urlParams.get('displayTimeMs')) || 5000;
   var isPaused = false;
   var isMenuOpen = false;
-  var currentForm = null; // 'notes' or null
+  var currentForm = null; // 'notes', 'prov' or null
+  var provExists = false; // does the open prov form have a saved row?
   var hasImageError = false;
   var isErrorState = false; // true on startup error; Escape → Params page
   var timer = null;
@@ -222,6 +242,107 @@
     }
   }
 
+  // Provenance form: create/edit/delete the prov row for the current image.
+  function setProvMsg(text, kind) {
+    provMsg.textContent = text;
+    provMsg.className = 'action-status' + (kind ? ' ' + kind : '');
+  }
+
+  async function openProvForm() {
+    if (currentFotoId === null) {
+      showActionToast('No image selected');
+      return;
+    }
+    var fotoId = currentFotoId;
+    pause();
+    closeMenu();
+    currentForm = 'prov';
+    provFilename.textContent = currentFilename || 'Unknown';
+    provImgId.textContent = fotoId;
+    provDateTaken.textContent = currentDtTaken || 'Unknown';
+    Object.keys(provInputs).forEach(function (k) { provInputs[k].value = ''; });
+    provExists = false;
+    provDeleteBtn.disabled = true;
+    setProvMsg('');
+    provOverlay.classList.add('visible');
+    try {
+      var response = await fetch('/api/prov/' + fotoId);
+      var data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to load');
+      if (data.prov) {
+        provExists = true;
+        provDeleteBtn.disabled = false;
+        Object.keys(provInputs).forEach(function (k) {
+          var v = data.prov[k];
+          provInputs[k].value = v === null || v === undefined ? '' : v;
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load prov:', error);
+      setProvMsg('Could not load saved values: ' + error.message, 'error');
+    }
+    provInputs.place.focus();
+  }
+
+  function closeProvForm() {
+    currentForm = null;
+    provOverlay.classList.remove('visible');
+  }
+
+  async function submitProv() {
+    var body = {};
+    Object.keys(provInputs).forEach(function (k) {
+      var v = provInputs[k].value;
+      if (k === 'photo_rank' || k === 'event_rank') {
+        body[k] = v.trim() === '' ? null : Number(v);
+      } else {
+        body[k] = v;
+      }
+    });
+    try {
+      var response = await fetch('/api/prov/' + currentFotoId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      var data = await response.json();
+      if (!response.ok) {
+        setProvMsg(data.error || 'Failed to save', 'error');
+        return;
+      }
+      closeProvForm();
+      showActionToast(data.result === 'deleted' ? 'Prov cleared' : 'Prov saved');
+    } catch (error) {
+      console.error('Failed to save prov:', error);
+      var prefix = error instanceof TypeError
+        ? "Can't reach the server — is it still running? "
+        : 'Error saving prov: ';
+      setProvMsg(prefix + error, 'error');
+    }
+  }
+
+  async function deleteProvRow() {
+    if (!provExists) return;
+    if (!window.confirm('Delete the provenance record for img_id ' + currentFotoId + '?')) return;
+    try {
+      var response = await fetch('/api/prov/' + currentFotoId, { method: 'DELETE' });
+      if (!response.ok) {
+        var data = await response.json();
+        setProvMsg(data.error || 'Failed to delete', 'error');
+        return;
+      }
+      closeProvForm();
+      showActionToast('Prov deleted');
+    } catch (error) {
+      console.error('Failed to delete prov:', error);
+      setProvMsg('Error deleting prov: ' + error, 'error');
+    }
+  }
+
+  document.getElementById('prov-cancel-btn').addEventListener('click', closeProvForm);
+  document.getElementById('prov-submit-btn').addEventListener('click', submitProv);
+  provDeleteBtn.addEventListener('click', deleteProvRow);
+
   // Notes form button handlers
   notesCancelBtn.addEventListener('click', function () {
     closeNotesForm();
@@ -231,31 +352,37 @@
     submitNote();
   });
 
-  // Notes panel drag (translate from centered position)
-  var isDragging = false;
-  var dragStartX, dragStartY;
-  var panelOffsetX = 0, panelOffsetY = 0;
+  // Form panel drag (translate from centered position). Each panel keeps its
+  // own offset, so it reopens wherever it was last dragged to.
+  function makeDraggable(panel, handle) {
+    var isDragging = false;
+    var startX, startY;
+    var offsetX = 0, offsetY = 0;
 
-  notesDragHandle.addEventListener('mousedown', function (e) {
-    isDragging = true;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    e.preventDefault();
-  });
+    handle.addEventListener('mousedown', function (e) {
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      e.preventDefault();
+    });
 
-  document.addEventListener('mousemove', function (e) {
-    if (!isDragging) return;
-    var dx = panelOffsetX + e.clientX - dragStartX;
-    var dy = panelOffsetY + e.clientY - dragStartY;
-    notesPanelEl.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
-  });
+    document.addEventListener('mousemove', function (e) {
+      if (!isDragging) return;
+      var dx = offsetX + e.clientX - startX;
+      var dy = offsetY + e.clientY - startY;
+      panel.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+    });
 
-  document.addEventListener('mouseup', function (e) {
-    if (!isDragging) return;
-    panelOffsetX += e.clientX - dragStartX;
-    panelOffsetY += e.clientY - dragStartY;
-    isDragging = false;
-  });
+    document.addEventListener('mouseup', function (e) {
+      if (!isDragging) return;
+      offsetX += e.clientX - startX;
+      offsetY += e.clientY - startY;
+      isDragging = false;
+    });
+  }
+
+  makeDraggable(notesPanelEl, notesDragHandle);
+  makeDraggable(provOverlay.querySelector('.panel'), provOverlay.querySelector('h2'));
 
   // Display an image by index. In DB mode, checks missing-on-disk status
   // (via fetchImageInfo) before loading the file — a known-missing image is
@@ -487,6 +614,19 @@
       return;
     }
 
+    // Prov form is open: Esc cancels; Enter saves except in the comment textarea
+    if (currentForm === 'prov') {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeProvForm();
+      } else if (e.key === 'Enter' && document.activeElement &&
+          document.activeElement.tagName === 'INPUT') {
+        e.preventDefault();
+        submitProv();
+      }
+      return;
+    }
+
     // Error state: Esc → Params page; Space → retry if image load error
     if (isErrorState) {
       if (e.key === 'Escape') {
@@ -522,6 +662,9 @@
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         openNotesForm();
+      } else if (e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
+        openProvForm();
       }
       return;
     }
@@ -544,6 +687,11 @@
         case 'N':
           e.preventDefault();
           openNotesForm();
+          break;
+        case 'e':
+        case 'E':
+          e.preventDefault();
+          openProvForm();
           break;
         case 'g':
         case 'G':
@@ -597,6 +745,11 @@
       case 'N':
         e.preventDefault();
         openNotesForm();
+        break;
+      case 'e':
+      case 'E':
+        e.preventDefault();
+        openProvForm();
         break;
       case 'g':
       case 'G':
