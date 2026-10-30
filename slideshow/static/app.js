@@ -44,6 +44,8 @@
   var provMsg = document.getElementById('prov-msg');
   var provDeleteBtn = document.getElementById('prov-delete-btn');
   var provInputs = {
+    title: document.getElementById('prov-title'),
+    subtitle: document.getElementById('prov-subtitle'),
     place: document.getElementById('prov-place'),
     event_time: document.getElementById('prov-event-time'),
     subjects: document.getElementById('prov-subjects'),
@@ -281,7 +283,7 @@
       console.error('Failed to load prov:', error);
       setProvMsg('Could not load saved values: ' + error.message, 'error');
     }
-    provInputs.place.focus();
+    provInputs.title.focus();
   }
 
   function closeProvForm() {

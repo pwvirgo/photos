@@ -31,6 +31,8 @@ CREATE TABLE notes (
 -- NULL when blank; "at least one non-id column" is enforced in slideshow code.
 CREATE TABLE prov (
     img_id      INTEGER PRIMARY KEY REFERENCES fotos(img_id),
+    title       TEXT,   -- short label, up to 64 chars
+    subtitle    TEXT,   -- longer description
     place       TEXT,
     event_time  TEXT,
     subjects    TEXT,

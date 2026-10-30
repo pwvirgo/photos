@@ -12,17 +12,33 @@ already is a hand-run script outside the app's code paths.
 
 ## Files
 
-- **`create_tables.sql`** — schema: `fotos`, `notes`, `actions`, and the
-  `v_notes` view. Not yet run to build a database from scratch.
+- **`create_tables.sql`** — schema: `fotos`, `notes`, `prov`, `actions`, and
+  the `vnote` / `vaction` views. Not yet run to build a database from scratch.
+
+  `prov` ("provenance") holds facts about an image, one row per image,
+  keyed by `img_id` (also a foreign key to `fotos`): `title` (short, up
+  to 64 chars), `subtitle` (longer description), `place`, `event_time`
+  (free text — "1812", "summer 1987", or an exif date), `subjects`, `source`
+  (scanner, camera, web scrape), `shooter`, `photo_rank` and `event_rank`
+  (1–5 or NULL, enforced by CHECK), `comment`. It is meant to replace `notes`
+  for documenting images. Blank values are NULL, and a row with every
+  column NULL is not kept — those rules live in `saveProv()`, not in the
+  schema, so they can change without rebuilding the table.
 
 - **`db.ts`** — SQLite interface (Deno's `node:sqlite`), moved from `lib/`.
   `openDb()` / `openDbReadOnly()`; `queryImages()` (takes a db path, not a
   handle; runs on a read-only connection and wraps the query so
   `status='deleted'` rows are never visible); `getImageInfo()`;
   `insertNote()` / `insertAction()` (parameterized inserts);
+  `getProv()` / `saveProv()` / `deleteProv()` (`saveProv()` inserts or
+  replaces, trims text, turns blanks into NULL, checks ranks, and deletes
+  the row when every field is blank);
   `hasMissingNote()` / `deleteMissingNotes()`; `fileExists()`. `openDb()`
-  turns foreign keys off on purpose, so `notes` / `actions` rows can outlive
-  a `fotos` row whose `status` is `'deleted'`. Imports `logger` from `../lib/logger.ts`.
+  turns foreign keys **on**, so `notes` / `actions` / `prov` must point at a
+  real `fotos` row, and hard-deleting a `fotos` row that they still reference
+  is refused. Nothing does that today (deleted photos keep their row with
+  `status='deleted'`), but a future purge must clear those rows first.
+  Imports `logger` from `../lib/logger.ts`.
 
 `collect` is zsh/Python and can't import `db.ts` directly, so it keeps
 writing its own SQL/Python for schema creation and population.

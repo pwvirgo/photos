@@ -14,12 +14,12 @@ with detail.
 
 The reason for the module split. No module trespasses on another's scope.
 
-| Module | `fotos` | `notes` | `actions` | files on disk |
-|---|---|---|---|---|
-| `collect` | create/populate | — | — | reads |
-| `dbase` | schema only | — | — | — |
-| `slideshow` | read | insert | — | reads |
-| `curate` | `status`, `path`/`name` | insert/delete `missing` | insert, update | **moves/destroys** |
+| Module | `fotos` | `notes` | `prov` | `actions` | files on disk |
+|---|---|---|---|---|---|
+| `collect` | create/populate | — | — | — | reads |
+| `dbase` | schema only | — | — | — | — |
+| `slideshow` | read | insert | insert, update, delete | — | reads |
+| `curate` | `status`, `path`/`name` | insert/delete `missing` | — | insert, update | **moves/destroys** |
 
 ## Running
 

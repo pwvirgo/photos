@@ -228,12 +228,15 @@ export function insertNote(
 }
 
 export const PROV_TEXT_FIELDS = [
-  "place", "event_time", "subjects", "source", "shooter", "comment",
+  "title", "subtitle", "place", "event_time", "subjects", "source", "shooter",
+  "comment",
 ] as const;
 export const PROV_RANK_FIELDS = ["photo_rank", "event_rank"] as const;
 
 export interface ProvRow {
   img_id: number;
+  title: string | null;
+  subtitle: string | null;
   place: string | null;
   event_time: string | null;
   subjects: string | null;
@@ -290,11 +293,11 @@ export function saveProv(
 
   db.prepare(
     `INSERT OR REPLACE INTO prov
-       (img_id, place, event_time, subjects, source, shooter,
+       (img_id, title, subtitle, place, event_time, subjects, source, shooter,
         photo_rank, event_rank, comment)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
-    imgId, text.place, text.event_time, text.subjects, text.source,
+    imgId, text.title, text.subtitle, text.place, text.event_time, text.subjects, text.source,
     text.shooter, rank.photo_rank, rank.event_rank, text.comment,
   );
   logger.info(`Prov saved, img_id=${imgId}`);
