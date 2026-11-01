@@ -287,6 +287,7 @@ async function main(): Promise<void> {
         camera: info?.camera || null,
         md5: info?.md5 || null,
         duration: info?.duration || null,
+        prov: db ? getProv(db, img.id) : null,
         missing,
         displayable,
       });

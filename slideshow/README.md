@@ -24,7 +24,15 @@ decision.
 
 ## Keys
 
-Press `Esc` in the viewer for the full list. The annotation keys:
+Press `Esc` in the viewer for the full list.
+
+- `I` — Info panel, read-only: off → left side → bottom strip → off. Shows
+  Title, Subjects, Place (from `prov`), then img_id, Path, Camera, Taken, File
+  size, Image size. The photo shrinks to fit beside/above it, so nothing
+  covers it. Layout lives in `styles.css` under `body.info-left` /
+  `body.info-bottom`.
+
+The annotation keys:
 
 - `N` — Notes form (insert-only; category required).
 - `E` — Provenance form for the image on screen: create, edit, or delete its

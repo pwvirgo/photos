@@ -19,7 +19,9 @@
 
   <div id="image-counter" class="counter"></div>
 
-  <div id="info-overlay" class="indicator info-overlay"></div>
+  <!-- Read-only info panel beside or below the photo; I cycles off/left/bottom.
+       Layout is set by a body class (info-left / info-bottom) in styles.css. -->
+  <dl id="info-panel" class="info-panel"></dl>
 
   <!-- Slideshow commands: shown when user presses Esc -->
   <div id="menu-overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="menu-heading">
@@ -32,7 +34,7 @@
         <dt><kbd>&larr;</kbd></dt><dd>Previous image</dd>
         <dt><kbd>&rarr;</kbd></dt><dd>Next image</dd>
         <dt><kbd>G</kbd></dt><dd>Go to image number</dd>
-        <dt><kbd>I</kbd></dt><dd>Toggle image info</dd>
+        <dt><kbd>I</kbd></dt><dd>Info panel: off → left → bottom</dd>
         <dt><kbd>N</kbd></dt><dd>Open Notes</dd>
         <dt><kbd>E</kbd></dt><dd>Edit provenance (place, when, who&hellip;)</dd>
         <dt><kbd>T</kbd></dt><dd>Set display time (this run)</dd>

@@ -280,16 +280,85 @@ kbd {
   z-index: 100;
 }
 
-.info-overlay {
-  top: 20px;
-  left: 20px;
-  max-width: 70%;
-  padding: 10px 15px;
-  font-size: 18px;
-  line-height: 1.6;
+/* Info panel (I key). Hidden unless the body has class info-left or
+   info-bottom (set by cycleInfoMode() in app.js). Each layout shrinks .stage
+   to make room, so the photo (object-fit: contain) rescales and nothing
+   covers it. Sizes are in rem so they follow the font size. */
+:root {
+  --info-w: 24rem;   /* left panel width */
+  --info-h: 8rem;    /* bottom strip height */
+}
+
+.info-panel {
+  display: none;
+  position: fixed;
+  overflow: hidden;
+  padding: 1rem 1.25rem;
+  background-color: var(--bg-panel);
+  font-size: 16px;
+  line-height: 1.5;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  align-content: start;
+}
+
+.info-panel dt {
+  color: var(--text-dim);
+}
+
+/* One line per value; text that doesn't fit ends in "…" */
+.info-panel dd {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Left: panel down the left edge, photo in the rest */
+body.info-left .stage {
+  margin-left: var(--info-w);
+  width: calc(100% - var(--info-w));
+}
+body.info-left .info-panel {
+  display: grid;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--info-w);
+}
+body.info-left .counter {
+  left: calc(var(--info-w) + 20px);
+}
+
+/* Bottom: strip along the bottom, photo above it. 4 label/value pairs per
+   line, so the 8 short fields take 2 lines; Path is moved (order) to a third
+   line of its own, spanning the full width. */
+body.info-bottom .stage {
+  height: calc(100% - var(--info-h));
+}
+body.info-bottom .info-panel {
+  display: grid;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--info-h);
+  grid-template-columns: repeat(4, auto minmax(0, 1fr));
+}
+/* Path (both layouts): when too long, cut the start, not the filename.
+   See the ‎ note in app.js updateInfoPanel(). */
+.info-panel dd.info-path {
+  direction: rtl;
   text-align: left;
-  white-space: pre-line;
-  word-break: break-all;
+}
+
+body.info-bottom .info-panel .info-path {
+  order: 1;
+}
+body.info-bottom .info-panel dd.info-path {
+  grid-column: 2 / -1;
+}
+body.info-bottom .counter {
+  bottom: calc(var(--info-h) + 20px);
 }
 
 /* Notes form */

@@ -15,7 +15,7 @@
   var menuOverlay = document.getElementById('menu-overlay');
   var imageCounter = document.getElementById('image-counter');
   var actionIndicator = document.getElementById('action-indicator');
-  var infoOverlay = document.getElementById('info-overlay');
+  var infoPanel = document.getElementById('info-panel');
 
   // Notes form elements
   var notesOverlay = document.getElementById('notes-overlay');
@@ -78,9 +78,11 @@
   var currentBytes = null;
   var currentImgSize = '';
   var currentCamera = '';
-  var currentMd5 = '';
   var currentDuration = '';
-  var isInfoVisible = false;
+  var currentProv = null; // the image's prov row, or null if it has none
+  // Info panel: 'none', 'left' or 'bottom'. The body gets class info-left or
+  // info-bottom (or neither); styles.css does the layout from that.
+  var infoMode = 'none';
 
   // Params page URL; carries this run's display time and image index
   function paramsUrl() {
@@ -112,9 +114,9 @@
     currentBytes = null;
     currentImgSize = '';
     currentCamera = '';
-    currentMd5 = '';
     currentDuration = '';
-    updateInfoOverlay();
+    currentProv = null;
+    updateInfoPanel();
   }
 
   // Fetch the foto_id, name, path, dtCreated, and missing-on-disk status for
@@ -138,9 +140,9 @@
       currentBytes = typeof data.bytes === 'number' ? data.bytes : null;
       currentImgSize = data.imgSize || '';
       currentCamera = data.camera || '';
-      currentMd5 = data.md5 || '';
       currentDuration = data.duration || '';
-      updateInfoOverlay();
+      currentProv = data.prov || null;
+      updateInfoPanel();
       return data;
     } catch {
       resetCurrentInfo();
@@ -148,25 +150,56 @@
     }
   }
 
-  // Toggleable overlay showing ID/filename/path/dates/size for the current image
-  function updateInfoOverlay() {
-    if (!isInfoVisible) return;
-    var kb = currentBytes !== null ? Math.round(currentBytes / 1024) + ' KB' : 'Unknown';
-    infoOverlay.textContent =
-      'img_id: ' + (currentFotoId !== null ? currentFotoId : 'Unknown') +
-        '   md5: ' + (currentMd5 || 'Unknown') + '\n' +
-      'Name: ' + (currentFilename || 'Unknown') + '\n' +
-      'Camera: ' + (currentCamera || 'Unknown') + '\n' +
-      'Path: ' + (currentPath || 'Unknown') + '\n' +
-      'Taken: ' + (currentDtTaken || 'Unknown') + '  Created: ' + (currentDtCreated || 'Unknown') + '\n' +
-      kb + (currentImgSize ? '  ' + currentImgSize : '') +
-        (currentDuration ? '  ' + currentDuration : '');
+  function formatBytes(bytes) {
+    if (bytes === null) return '';
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
-  function toggleInfo() {
-    isInfoVisible = !isInfoVisible;
-    infoOverlay.classList.toggle('visible', isInfoVisible);
-    updateInfoOverlay();
+  // Fill the info panel: always the same rows in the same order, with a blank
+  // value when a field is unknown, so nothing moves from slide to slide.
+  function updateInfoPanel() {
+    if (infoMode === 'none') return;
+    var prov = currentProv || {};
+    var rows = [
+      ['Title', prov.title],
+      ['Subjects', prov.subjects],
+      ['Place', prov.place],
+      ['img_id', currentFotoId],
+      ['Path', currentPath],
+      ['Camera', currentCamera],
+      ['Taken', currentDtTaken],
+      ['File size', formatBytes(currentBytes)],
+      ['Image size', currentImgSize + (currentDuration ? '  ' + currentDuration : '')],
+    ];
+    infoPanel.textContent = '';
+    rows.forEach(function (row) {
+      var value = row[1] === null || row[1] === undefined ? '' : String(row[1]);
+      var dt = document.createElement('dt');
+      var dd = document.createElement('dd');
+      dt.textContent = row[0];
+      dd.textContent = value;
+      dd.title = value; // hover shows text cut off with "…"
+      // Hook for styles.css: the bottom strip gives Path a line of its own
+      // and cuts it at the start, so the filename stays visible. The CSS does
+      // that with right-to-left direction; the ‎ (left-to-right mark)
+      // at each end keeps the slashes from being moved to the wrong end.
+      if (row[0] === 'Path') {
+        dt.className = 'info-path';
+        dd.className = 'info-path';
+        dd.textContent = '‎' + value + '‎';
+      }
+      infoPanel.appendChild(dt);
+      infoPanel.appendChild(dd);
+    });
+  }
+
+  // I key: off → left → bottom → off
+  function cycleInfoMode() {
+    infoMode = infoMode === 'none' ? 'left' : infoMode === 'left' ? 'bottom' : 'none';
+    document.body.classList.toggle('info-left', infoMode === 'left');
+    document.body.classList.toggle('info-bottom', infoMode === 'bottom');
+    updateInfoPanel();
   }
 
   // Notes form
@@ -314,6 +347,7 @@
       }
       closeProvForm();
       showActionToast(data.result === 'deleted' ? 'Prov cleared' : 'Prov saved');
+      fetchImageInfo(currentIndex); // refresh the info panel
     } catch (error) {
       console.error('Failed to save prov:', error);
       var prefix = error instanceof TypeError
@@ -335,6 +369,7 @@
       }
       closeProvForm();
       showActionToast('Prov deleted');
+      fetchImageInfo(currentIndex); // refresh the info panel
     } catch (error) {
       console.error('Failed to delete prov:', error);
       setProvMsg('Error deleting prov: ' + error, 'error');
@@ -660,7 +695,7 @@
         // Info/Notes stay available on the error box: the metadata is already
         // fetched, and a file that won't load is exactly one worth annotating.
         e.preventDefault();
-        toggleInfo();
+        cycleInfoMode();
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         openNotesForm();
@@ -741,7 +776,7 @@
       case 'i':
       case 'I':
         e.preventDefault();
-        toggleInfo();
+        cycleInfoMode();
         break;
       case 'n':
       case 'N':
