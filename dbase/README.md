@@ -43,6 +43,29 @@ already is a hand-run script outside the app's code paths.
 `collect` is zsh/Python and can't import `db.ts` directly, so it keeps
 writing its own SQL/Python for schema creation and population.
 
+- **`snips/`** — hand-run scripts and SQL patterns. These may write to the
+  db; `snips/` is a channel for bulk edits, alongside slideshow's E form.
+  - **`prov_bulk.ts`** + **`prov_bulk_params.json`** — create or update
+    `prov` rows for every photo matching a `whereClause` (same syntax as
+    slideshow's). The params file lists the columns to write (only those are
+    touched; every photo gets the same values) and what to
+    do with photos that already have a prov row: `skip` (default), `fill`
+    blank columns only, or `overwrite` the listed columns. The options are
+    described in the JSON's `comment` keys. Run from `dbase/`:
+
+    ```
+    deno run --allow-read --allow-write snips/prov_bulk.ts \
+        --params=snips/prov_bulk_params.json [--execute] [--limit N]
+    ```
+
+    Dry run unless `--execute`; the dry run does the writes in a
+    transaction and rolls back, so it catches errors (bad rank) and lists
+    each photo as new / update [columns] / skip / unchanged. No undo — back
+    up the db first. Copy the params file per job rather than editing the
+    template.
+  - `prov_populate.*`, `prov_folder_sequence.sql` — earlier one-offs that
+    `prov_bulk.ts` replaces; kept as SQL examples.
+
 - **`history/`** — one-off scripts run outside normal operations,
   numbered in the order they were run, reference only. See
   `history/README.md`.

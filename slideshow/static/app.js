@@ -3,6 +3,7 @@
 // controls (pause, resume, next, prev, menu).
 // N opens a notes form to annotate images; data saved to the notes table.
 // E opens the provenance form (create/edit/delete the prov row for the image).
+// Its Copy/Paste buttons carry fields from one photo's form to the next.
 // G jumps to an image number; T sets display time for this run; P opens the
 // params page.
 
@@ -55,6 +56,14 @@
     event_rank: document.getElementById('prov-event-rank'),
     comment: document.getElementById('prov-comment'),
   };
+  var provCopyInfo = document.getElementById('prov-copy-info');
+  var provPasteBtn = document.getElementById('prov-paste-btn');
+  // Copy/Paste store the form in sessionStorage (lasts as long as the tab).
+  // photo_rank and comment belong to one photo: never copied, never pasted over.
+  var PROV_COPY_KEY = 'provCopy';
+  var PROV_COPY_FIELDS = Object.keys(provInputs).filter(function (k) {
+    return k !== 'photo_rank' && k !== 'comment';
+  });
 
   // Parse URL params
   var urlParams = new URLSearchParams(window.location.search);
@@ -161,16 +170,25 @@
   function updateInfoPanel() {
     if (infoMode === 'none') return;
     var prov = currentProv || {};
+    // Every prov column (labels as in the E form), then the fotos fields,
+    // then Path, then Comment last.
     var rows = [
       ['Title', prov.title],
-      ['Subjects', prov.subjects],
+      ['Subtitle', prov.subtitle],
       ['Place', prov.place],
+      ['When', prov.event_time],
+      ['Subjects', prov.subjects],
+      ['Source', prov.source],
+      ['Shooter', prov.shooter],
+      ['Photo rank', prov.photo_rank],
+      ['Event rank', prov.event_rank],
       ['img_id', currentFotoId],
-      ['Path', currentPath],
       ['Camera', currentCamera],
       ['Taken', currentDtTaken],
       ['File size', formatBytes(currentBytes)],
       ['Image size', currentImgSize + (currentDuration ? '  ' + currentDuration : '')],
+      ['Path', currentPath],
+      ['Comment', prov.comment],
     ];
     infoPanel.textContent = '';
     rows.forEach(function (row) {
@@ -188,6 +206,11 @@
         dt.className = 'info-path';
         dd.className = 'info-path';
         dd.textContent = '‎' + value + '‎';
+      }
+      // Comment wraps onto several lines rather than one cut-off line.
+      if (row[0] === 'Comment') {
+        dt.className = 'info-comment';
+        dd.className = 'info-comment';
       }
       infoPanel.appendChild(dt);
       infoPanel.appendChild(dd);
@@ -299,6 +322,7 @@
     provExists = false;
     provDeleteBtn.disabled = true;
     setProvMsg('');
+    refreshProvCopyUi();
     provOverlay.classList.add('visible');
     try {
       var response = await fetch('/api/prov/' + fotoId);
@@ -317,6 +341,50 @@
       setProvMsg('Could not load saved values: ' + error.message, 'error');
     }
     provInputs.title.focus();
+  }
+
+  // The stored copy, or null if none (or storage is unavailable).
+  function readProvCopy() {
+    try {
+      return JSON.parse(sessionStorage.getItem(PROV_COPY_KEY));
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function refreshProvCopyUi() {
+    var copy = readProvCopy();
+    provPasteBtn.disabled = !copy;
+    provCopyInfo.textContent = copy
+      ? 'Copied from img_id ' + copy.fromId + (copy.title ? ' · ' + copy.title : '')
+      : '';
+  }
+
+  function copyProv() {
+    var fields = {};
+    PROV_COPY_FIELDS.forEach(function (k) { fields[k] = provInputs[k].value; });
+    var copy = { fromId: currentFotoId, title: fields.title, fields: fields };
+    try {
+      sessionStorage.setItem(PROV_COPY_KEY, JSON.stringify(copy));
+    } catch (error) {
+      setProvMsg('Could not copy: ' + error.message, 'error');
+      return;
+    }
+    refreshProvCopyUi();
+    setProvMsg('Copied');
+  }
+
+  function pasteProv() {
+    var copy = readProvCopy();
+    if (!copy) {
+      setProvMsg('Nothing copied yet');
+      return;
+    }
+    PROV_COPY_FIELDS.forEach(function (k) {
+      var v = copy.fields[k];
+      provInputs[k].value = v === null || v === undefined ? '' : v;
+    });
+    setProvMsg('Pasted — Save to keep');
   }
 
   function closeProvForm() {
@@ -379,6 +447,24 @@
   document.getElementById('prov-cancel-btn').addEventListener('click', closeProvForm);
   document.getElementById('prov-submit-btn').addEventListener('click', submitProv);
   provDeleteBtn.addEventListener('click', deleteProvRow);
+  document.getElementById('prov-copy-btn').addEventListener('click', copyProv);
+  provPasteBtn.addEventListener('click', pasteProv);
+
+  // Show each prov button's key, in the platform's own notation.
+  (function labelProvButtons() {
+    var platform = (navigator.userAgentData && navigator.userAgentData.platform) ||
+      navigator.platform || '';
+    var isMac = /mac/i.test(platform);
+    var labels = {
+      'prov-copy-btn': 'Copy ' + (isMac ? '⌥C' : 'Alt+C'),
+      'prov-paste-btn': 'Paste ' + (isMac ? '⌥V' : 'Alt+V'),
+      'prov-cancel-btn': 'Cancel Esc',
+      'prov-submit-btn': 'Save ' + (isMac ? '⌘↵' : 'Ctrl+Enter'),
+    };
+    Object.keys(labels).forEach(function (id) {
+      document.getElementById(id).textContent = labels[id];
+    });
+  })();
 
   // Notes form button handlers
   notesCancelBtn.addEventListener('click', function () {
@@ -651,8 +737,23 @@
       return;
     }
 
-    // Prov form is open: Esc cancels; Enter saves except in the comment textarea
+    // Prov form is open: Esc cancels; Enter saves except in a textarea;
+    // Cmd/Ctrl+Enter saves from anywhere; Option/Alt+C copies, +V pastes.
     if (currentForm === 'prov') {
+      // e.code is the physical key: on a Mac Option-C types "ç", so e.key
+      // would miss it. Ctrl is excluded so AltGr (Ctrl+Alt on Windows) still
+      // types its characters.
+      if (e.altKey && !e.ctrlKey && !e.metaKey &&
+          (e.code === 'KeyC' || e.code === 'KeyV')) {
+        e.preventDefault();
+        if (e.code === 'KeyC') copyProv(); else pasteProv();
+        return;
+      }
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        submitProv();
+        return;
+      }
       if (e.key === 'Escape') {
         e.preventDefault();
         closeProvForm();

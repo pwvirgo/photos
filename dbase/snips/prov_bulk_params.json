@@ -1,0 +1,26 @@
+{
+  "comment1": "Params for prov_bulk.ts. Keys starting with 'comment' are ignored. Dry run unless --execute.",
+
+  "whereClause": "name LIKE '20050501%jpg'",
+  "comment2": "whereClause: required; same syntax as slideshow's whereClause (fotos columns). Deleted photos are never matched.",
+
+  "orderBy": "dt_taken, name",
+  "comment3": "orderBy: order of the photos in the list (and which come first with --limit). Default: path, name.",
+
+  "existing": "skip",
+  "comment4": "existing — photos that already have a prov row: 'skip' = leave alone (default); 'fill' = write only their blank columns; 'overwrite' = write every column listed in set.",
+
+  "set": {
+    "title": "Josh and Liz visit Dad",
+    "subtitle": "",
+    "place": "Orchard Pond Apts, Gaithersburg, MD",
+    "event_time": "May 1, 2005",
+    "subjects": "Joshua, Elisabeth, Phil",
+    "source": "camera",
+    "shooter": "mostly Phil, some Josh",
+    "photo_rank": null,
+    "event_rank": 3,
+    "comment": "Fun"
+  },
+  "comment5": "set: only the columns listed are touched — delete a line to leave that column as it is. \"\" or null = blank (clears it with overwrite). Ranks: 1-5 or null. Every photo gets the same values."
+}

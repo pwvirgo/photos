@@ -27,9 +27,11 @@ decision.
 Press `Esc` in the viewer for the full list.
 
 - `I` — Info panel, read-only: off → left side → bottom strip → off. Shows
-  Title, Subjects, Place (from `prov`), then img_id, Path, Camera, Taken, File
-  size, Image size. The photo shrinks to fit beside/above it, so nothing
-  covers it. Layout lives in `styles.css` under `body.info-left` /
+  every `prov` column (Title, Subtitle, Place, When, Subjects, Source,
+  Shooter, Photo rank, Event rank), then img_id, Camera, Taken, File size,
+  Image size, then Path, and Comment last. Comment wraps (8 lines on the
+  left, 2 in the bottom strip). The photo shrinks to fit beside/above it, so
+  nothing covers it. Layout lives in `styles.css` under `body.info-left` /
   `body.info-bottom`.
 
 The annotation keys:
@@ -40,6 +42,11 @@ The annotation keys:
   on Save (or Enter in a one-line field); `Esc` or Cancel closes without
   saving. Delete asks for confirmation. Saving with every field blank deletes
   the row. Drag the heading to move the form (as with Notes).
+  **Copy** stores the form as it stands (unsaved edits included); **Paste**
+  fills a later photo's form from it. Both skip Photo rank and Comment. The
+  copy lasts as long as the browser tab; nothing is saved until Save.
+  Keys: Option/Alt+C Copy, Option/Alt+V Paste, Cmd/Ctrl+Enter Save from any
+  field (including Subtitle and Comment), Esc Cancel. Buttons show the keys.
 
 ## Files
 

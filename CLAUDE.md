@@ -13,12 +13,15 @@ with detail.
 ## Write scope
 
 The reason for the module split. No module trespasses on another's scope.
+`prov` has two writers: the user one photo at a time in slideshow's E form,
+and `dbase/snips` scripts in bulk. (`dbase/db.ts` also holds the routines the
+other modules call; the table says who *initiates* each write.)
 
 | Module | `fotos` | `notes` | `prov` | `actions` | files on disk |
 |---|---|---|---|---|---|
 | `collect` | create/populate | — | — | — | reads |
-| `dbase` | schema only | — | — | — | — |
-| `slideshow` | read | insert | insert, update, delete | — | reads |
+| `dbase` | schema | — | insert, update (`snips/` scripts, e.g. `prov_bulk.ts`) | — | — |
+| `slideshow` | read | insert | insert, update, delete (user, E form) | — | reads |
 | `curate` | `status`, `path`/`name` | insert/delete `missing` | — | insert, update | **moves/destroys** |
 
 ## Running

@@ -286,7 +286,7 @@ kbd {
    covers it. Sizes are in rem so they follow the font size. */
 :root {
   --info-w: 24rem;   /* left panel width */
-  --info-h: 8rem;    /* bottom strip height */
+  --info-h: 12.5rem; /* bottom strip height: 3 field lines + Path + 2 Comment lines */
 }
 
 .info-panel {
@@ -330,9 +330,20 @@ body.info-left .counter {
   left: calc(var(--info-w) + 20px);
 }
 
-/* Bottom: strip along the bottom, photo above it. 4 label/value pairs per
-   line, so the 8 short fields take 2 lines; Path is moved (order) to a third
-   line of its own, spanning the full width. */
+/* Comment (both layouts): wraps instead of one "…" line, up to a set number
+   of lines (left: 8, bottom: 2) -- room for 140+ characters either way. */
+.info-panel dd.info-comment {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 8;
+  line-clamp: 8;
+}
+
+/* Bottom: strip along the bottom, photo above it. 5 label/value pairs per
+   line, so the 14 short fields take 3 lines; Path and then Comment are
+   moved (order) to lines of their own, spanning the full width. */
 body.info-bottom .stage {
   height: calc(100% - var(--info-h));
 }
@@ -342,7 +353,7 @@ body.info-bottom .info-panel {
   right: 0;
   bottom: 0;
   height: var(--info-h);
-  grid-template-columns: repeat(4, auto minmax(0, 1fr));
+  grid-template-columns: repeat(5, auto minmax(0, 1fr));
 }
 /* Path (both layouts): when too long, cut the start, not the filename.
    See the ‎ note in app.js updateInfoPanel(). */
@@ -356,6 +367,20 @@ body.info-bottom .info-panel .info-path {
 }
 body.info-bottom .info-panel dd.info-path {
   grid-column: 2 / -1;
+}
+body.info-bottom .info-panel .info-comment {
+  order: 2;
+}
+/* The 14 short fields leave the third line part-empty; pinning these labels
+   to column 1 makes Path and Comment each start a fresh line. */
+body.info-bottom .info-panel dt.info-path,
+body.info-bottom .info-panel dt.info-comment {
+  grid-column: 1;
+}
+body.info-bottom .info-panel dd.info-comment {
+  grid-column: 2 / -1;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 body.info-bottom .counter {
   bottom: calc(var(--info-h) + 20px);
